@@ -1,4 +1,4 @@
-#include "segment.h"
+#include "exercice1.h"
 typedef struct {
 	char* mnemonic ; // Instruction mnemonic (ou nom de variable pour .DATA)
 	char* operand1 ; // Premier operande (ou type pour .DATA)

@@ -7,7 +7,8 @@
 MemoryHandler *memory_init(int size) {
 	MemoryHandler *mh = (MemoryHandler*)malloc(sizeof(MemoryHandler));
 	mh->total_size = size;
-	mh->memory = malloc(sizeof(Segment*) * size);
+	mh->memory = malloc(sizeof(void*) * size);
+	for (int i = 0; i < size; i++) mh->memory[i] = NULL;
 	mh->free_list = (Segment*)malloc(sizeof(Segment));
 	mh->free_list->start = 0;
 	mh->free_list->size = size;
