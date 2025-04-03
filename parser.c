@@ -6,45 +6,57 @@
 Instruction *parse_data_instruction(const char *line, HashMap* memory_locations) {
 	char mnemonic[256], operand1[256], operand2[256];
 	if (sscanf(line, "%s %s %s", mnemonic, operand1, operand2) != 3) {
+		printf("Invalid data instruction format: %s\n", line);
 		return NULL;
 	}
-	printf("ok\n");
+
 	Instruction *inst = (Instruction*)malloc(sizeof(Instruction));
 	inst->mnemonic = strdup(mnemonic);
 	inst->operand1 = strdup(operand1);
 	inst->operand2 = strdup(operand2);
-	char* separateur = ",";
-	char *token = strtok(operand2, separateur);
+	
+	char *token = strtok(operand2, ",");
 	while (token != NULL) {
-		hashmap_insert(memory_locations, inst->mnemonic, token);
-		printf("ajout data ok\n");
-		token = strtok(NULL, separateur);
+		hashmap_insert(memory_locations, inst->mnemonic, strdup(token));
+		token = strtok(NULL, ",");
 	}
 	return inst;
 }
 	
 
 Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_count) {
-	Instruction *inst = (Instruction*)malloc(sizeof(Instruction));
 	char mnemonic[256], operand[256], label[256];
-	char* separateur = ",", *token;
+	char* token;
 	
-	if (sscanf(line, "%s: %s %s", label, mnemonic, operand) != 3) {
-		sscanf(line, "%s %s", mnemonic, operand);
+	if (sscanf(line, "%s %s %s", label, mnemonic, operand) != 3) { //verifier si il y a un label
+		printf("note: no label found\n");
+		if (sscanf(line, "%s %s", mnemonic, operand) != 2) { //si ce n'est pas le cas, rescanner sans label
+			printf("Invalid code instruction format: %s\n", line);
+			return NULL;
+		}
 	} else {
-		hashmap_insert(labels, label, (void*)&code_count);
-		printf("ajout code ok\n");
+		label[strcspn(label, ":")] = 0; // supprimer le ":" à la fin du label
+		int *count = (int*)malloc(sizeof(int));
+		*count = code_count;
+		hashmap_insert(labels, label, count); //si le label est trouvé, l'ajouter à la hashmap
+	}
+	Instruction *inst = (Instruction*)malloc(sizeof(Instruction));
+	if (!inst) {
+		printf("Memory allocation failed\n");
+		return NULL;
 	}
 	inst->mnemonic = strdup(mnemonic);
-	
-	token = strtok(operand, separateur);
+	printf("ajout mnemonic : %s\n", inst->mnemonic);
+
+	token = strtok(operand, ",");
 	inst->operand1 = strdup(token);
+	printf("ajout operand1 : %s\n", inst->operand1);
 	
-	if ((token = strtok(NULL, separateur) )!= NULL) {
+	if ((token = strtok(NULL, ",")) != NULL) {
 		inst->operand2 = strdup(token);
+		printf("ajout operand2 : %s\n", inst->operand2);
 	} else {
-		char *no = "";
-		inst->operand2 = strdup(no);
+		inst->operand2 = strdup("");
 	}
 	
 	return inst;
@@ -52,59 +64,102 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 
 ParserResult *parse(const char *filename) {
 	FILE* f = fopen(filename, "r");
+	if (!f) {
+		printf("Failed to open file\n");
+		return NULL;
+	}
 	
 	char buffer[256];
-	fscanf(f, "%s", buffer);
-	if (strcmp(buffer, ".DATA") != 0) {
+	if (!fgets(buffer, sizeof(buffer), f) || strcmp(buffer, ".DATA\n") != 0) {
 		fclose(f);
 		return NULL;
 	}
+	
 	ParserResult *p = (ParserResult *)malloc(sizeof(ParserResult));
+	if (!p) {
+		fclose(f);
+		return NULL;
+	}
 	int n = 50;
-	p->data_instructions = (Instruction**)malloc(sizeof(Instruction*)*n);
+	p->data_instructions = (Instruction**)malloc(sizeof(Instruction*) * n);
+	p->code_instructions = (Instruction**)malloc(sizeof(Instruction*) * n);
+	if (!p->data_instructions || !p->code_instructions) {
+		free(p);
+		fclose(f);
+		return NULL;
+	}
 	p->data_count = 0;
-	p->code_instructions = (Instruction**)malloc(sizeof(Instruction*)*n);
 	p->code_count = 0;
 	p->labels = hashmap_create();
 	p->memory_locations = hashmap_create();
 	
-	fgets(buffer, 256, f);
-	buffer[strlen(buffer)-1] = '\0';
-	do {
-		printf("%s\n", buffer);
+	while (fgets(buffer, sizeof(buffer), f)) {
+		buffer[strcspn(buffer, "\n")] = '\0'; // supprimer le retour à la ligne
+		if (strcmp(buffer, ".CODE") == 0) break;
 		Instruction *ins = parse_data_instruction(buffer, p->memory_locations);
-		p->data_instructions[p->data_count++] = ins;
-		if(p->data_count >= n) {
-			p->data_instructions = realloc(p->data_instructions, sizeof(Instruction*)*(p->data_count+1));
-		}
-		fgets(buffer, 256, f);
-		int len = strlen(buffer);
-		buffer[len-1] = '\0';
-	} while (strcmp(buffer, ".CODE") != 0);
-	
-	while (fgets(buffer, 256, f)) {
-		int len = strlen(buffer);
-		buffer[len-1] = '\0';
-		printf("%s\n", buffer);
-		Instruction *ins = parse_code_instruction(buffer, p->labels, p->code_count);
-		p->code_instructions[p->code_count++] = ins;
-		if(p->code_count >= n) {
-			p->code_instructions = realloc(p->code_instructions, sizeof(Instruction*)*(p->code_count+1));
+		if (ins) {
+			p->data_instructions[p->data_count++] = ins;
+			if (p->data_count >= n) {
+				n *= 2;
+				p->data_instructions = realloc(p->data_instructions, sizeof(Instruction*) * n);
+				if (!p->data_instructions) {
+					fclose(f);
+					return NULL;
+				}
+			}
 		}
 	}
+	
+	while (fgets(buffer, sizeof(buffer), f)) {
+		buffer[strcspn(buffer, "\n")] = '\0'; // supprimer le retour à la ligne
+		Instruction *ins = parse_code_instruction(buffer, p->labels, p->code_count);
+		if (ins) {
+			p->code_instructions[p->code_count++] = ins;
+			if (p->code_count >= n) {
+				n *= 2;
+				p->code_instructions = realloc(p->code_instructions, sizeof(Instruction*) * n);
+				if (!p->code_instructions) {
+					fclose(f);
+					return NULL;
+				}
+			}
+		}
+	}
+	p->data_instructions = realloc(p->data_instructions, sizeof(Instruction*) * (p->data_count));
+	p->code_instructions = realloc(p->code_instructions, sizeof(Instruction*) * (p->code_count));
+
 	fclose(f);
 	return p;
 }
 
+void free_parser_result(ParserResult* p) {
+	if (!p) return;
+	for (int i = 0; i < p->data_count; i++) {
+		free(p->data_instructions[i]->mnemonic);
+		free(p->data_instructions[i]->operand1);
+		free(p->data_instructions[i]->operand2);
+		free(p->data_instructions[i]);
+	}
+	for (int i = 0; i < p->code_count; i++) {
+		free(p->code_instructions[i]->mnemonic);
+		free(p->code_instructions[i]->operand1);
+		free(p->code_instructions[i]->operand2);
+		free(p->code_instructions[i]);
+	}
+	hashmap_destroy(p->labels);
+	hashmap_destroy(p->memory_locations);
+	free(p->data_instructions);
+	free(p->code_instructions);
+	free(p);
+}
 
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
-	
+
+
+
+
+
+
+
+
+
+

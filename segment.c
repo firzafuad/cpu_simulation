@@ -6,8 +6,8 @@
 
 MemoryHandler *memory_init(int size) {
 	MemoryHandler *mh = (MemoryHandler*)malloc(sizeof(MemoryHandler));
-	mh->memory = NULL;
 	mh->total_size = size;
+	mh->memory = malloc(sizeof(Segment*) * size);
 	mh->free_list = (Segment*)malloc(sizeof(Segment));
 	mh->free_list->start = 0;
 	mh->free_list->size = size;
@@ -35,36 +35,36 @@ int create_segment(MemoryHandler *handler, const char *name, int start, int size
 	if (!seg) return 0;
 	
 	Segment* new_seg = (Segment*)malloc(sizeof(Segment));
+	if (!new_seg) return 0;
 	new_seg->start = start;
 	new_seg->size = size;
-	new_seg->next = *(handler->memory);
-	*(handler->memory) = new_seg;
+	new_seg->next = NULL;
 	hashmap_insert(handler->allocated, name, new_seg);
 	
-	int end = start+size;
+	int end = start + size;
 	int segEnd = seg->start + seg->size;
-	if (start - seg->start == 0) {
-		if (segEnd - end ==0) {
+	if (start == seg->start) {
+		if (end == segEnd) {
 			if (prev) prev->next = seg->next;
 			else handler->free_list = seg->next;
 			free(seg);
 		} else {
 			seg->start = end;
-			seg->size = segEnd-size;
+			seg->size = segEnd - end;
 		}
-	} else  {
-		if (segEnd - end == 0) {
-			seg->size = segEnd - size;
-		} else {
+	} else {
+		if (end == segEnd) {
 			seg->size = start - seg->start;
+		} else {
 			Segment* next_seg = (Segment*)malloc(sizeof(Segment));
+			if (!next_seg) return 0;
 			next_seg->start = end;
 			next_seg->size = segEnd - end;
 			next_seg->next = seg->next;
 			seg->next = next_seg;
 		}
 	}
-	return 0;
+	return 1;
 }
 
 int remove_segment(MemoryHandler* handler, const char *name) {

@@ -27,46 +27,56 @@ HashMap* hashmap_create() {
 
 int hashmap_insert(HashMap* map, const char *key, void* value) {
 	unsigned long index = simple_hash(key);
-	while (index < map->size*2 &&
-		!(map->table[index%map->size].value == NULL ||
-		map->table[index%map->size].value == TOMBSTONE)) {
-		index += 1;
+	for (int i = 0; i < map->size; i++) {
+		unsigned long idx = (index + i) % map->size;
+		if (map->table[idx].value == NULL || map->table[idx].value == TOMBSTONE) {
+			map->table[idx].key = strdup(key);
+			map->table[idx].value = value;
+			return 1;
+		}
 	}
-	if (index > map->size*2) {
-		return 0;
-	}
-	
-	map->table[index].key = strdup(key);
-	map->table[index].value = value;
-	return 1;
+	return 0; // Hashmap est pleine
 }
 
 void* hashmap_get(HashMap *map, const char *key) {
-	unsigned long idx = simple_hash(key);
-	if (map->table[idx].value != TOMBSTONE) {
-		return map->table[idx].value;
+	unsigned long index = simple_hash(key);
+	for (int i = 0; i < map->size; i++) {
+		unsigned long idx = (index + i) % map->size;
+		if (map->table[idx].key && strcmp(map->table[idx].key, key) == 0) {
+			return map->table[idx].value;
+		}
+		if (map->table[idx].value == NULL) break; // Arrêter si on trouve une case vide
 	}
 	return NULL;
 }
 
 int hashmap_remove(HashMap *map, const char *key) {
-	unsigned long idx = simple_hash(key);
-	if (map->table[idx].value != TOMBSTONE) {
-		free(map->table[idx].value);
-		free(map->table[idx].key);
-		map->table[idx].value = TOMBSTONE;
-		return 1;
-	}
+	unsigned long index = simple_hash(key);
+
+	for (int i = 0; i < TABLE_SIZE; i++) {
+        unsigned long curr = (index + i) % TABLE_SIZE;
+        HashEntry *entry = &map->table[curr];
+        
+        if (!entry->key) {
+            if (entry->value != TOMBSTONE) return 0;
+        } else if (strcmp(entry->key, key) == 0) {
+            // Free key and mark as TOMBSTONE
+            free(entry->key);
+            entry->key = NULL;
+            entry->value = TOMBSTONE;
+            map->size--;
+            return 1;
+        }
+    }
 	
 	return 0;
 }
 
 void hashmap_destroy(HashMap* map) {
-	HashEntry* table = map->table;
 	for (int i = 0; i < map->size; i++) {
-		free(table[i].key);
-		free(table[i].value);
+		free(map->table[i].key);
+		free(map->table[i].value);
 	}
-	free(table);
+	free(map->table);
 	free(map);
 }
