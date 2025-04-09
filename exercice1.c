@@ -26,14 +26,17 @@ HashMap* hashmap_create() {
 }
 
 int hashmap_insert(HashMap* map, const char *key, void* value) {
-	unsigned long index = simple_hash(key);
+	unsigned long idx = simple_hash(key);
 	for (int i = 0; i < map->size; i++) {
-		unsigned long idx = (index + i) % map->size;
+		if(idx >= map->size) {
+			idx=0;
+		}
 		if (map->table[idx].value == NULL || map->table[idx].value == TOMBSTONE) {
 			map->table[idx].key = strdup(key);
 			map->table[idx].value = value;
 			return 1;
 		}
+		idx++;
 	}
 	return 0; // Hashmap est pleine
 }
