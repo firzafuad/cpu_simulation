@@ -1,7 +1,7 @@
 GCC_FLAGS=-Wall -g
 GCC_LIB_FLAGS=-fpic -static
 CC=gcc
-EXE=main_parser
+EXE=main_parser main_cpu
 
 all: $(EXE)
 
