@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include "cpu.h"
 
 CPU* cpu_init(int memory_size) {
@@ -9,6 +11,13 @@ CPU* cpu_init(int memory_size) {
     }
     cpu->memory_handler = memory_init(memory_size);
     cpu->context = hashmap_create();
+    int* val = (int*)malloc(sizeof(int));
+    *val = 0;
+    hashmap_insert(cpu->context, "AX", (void*) val);
+    hashmap_insert(cpu->context, "BX", (void*) val);
+    hashmap_insert(cpu->context, "CX", (void*) val);
+    hashmap_insert(cpu->context, "DX", (void*) val);
+    
     return cpu;
 }
 
@@ -27,6 +36,7 @@ void cpu_destroy(CPU* cpu) {
         }
     }
     hashmap_destroy(cpu->memory_handler->allocated);
+    free(cpu->memory_handler->memory);
     free(cpu->memory_handler);
     free(cpu);
 }
@@ -49,3 +59,65 @@ void* load(MemoryHandler *handler, const char *segment_name, int pos) {
     }
     return handler->memory[seg->start + pos];
 }
+
+void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_count) {
+	int total = 0;
+	for (int i = 0; i < data_count; i++) {
+		int count = 0;
+		char *values = data_instructions[i]->operand2;
+		char *token = strtok(values, ",");
+		printf("count :\n");
+		while (token != NULL ) {
+			count++;
+			printf("%s\n", token);
+			token = strtok(NULL, ",");
+		}
+		total += count;
+	}
+	
+	int start = -1;
+	Segment *seg = cpu->memory_handler->free_list;
+	while (seg != NULL) {
+		if (seg->size >= total) {
+			start = seg->start;
+			break;
+		}
+		seg = seg->next;
+	}
+	if (start == -1) {
+		printf("memory is full\n");
+		return ;
+	}
+	create_segment(cpu->memory_handler, "DS", start, total);
+	int j = 0;
+	for (int i = 0; i < data_count; i++) {
+		char *values = data_instructions[i]->operand2;
+		char *token = strtok(values, ",");
+		printf("count :\n");
+		while (token != NULL ) {
+			printf("%s\n", token);
+			int *data = (int*)malloc(sizeof(int));
+			char *s = strdup(token);
+			*data = atoi(s);
+			free(s);
+			store(cpu->memory_handler, "DS", j++, (void*)data);
+			token = strtok(NULL, ",");
+		}
+	}
+}
+
+void print_data_segment(CPU *cpu) {
+	Segment *seg = hashmap_get(cpu->memory_handler->allocated, "DS");
+	printf("%d %d\n", seg->start, seg->size);
+	if (seg == NULL) {
+		printf("erreur d'allocation\n");
+		return ;
+	}
+	int size = seg->size;
+	for (int i = 0; i < size; i++) {
+		int *val = (int *)load(cpu->memory_handler, "DS", i);
+		printf("%d\t", *val);
+	}
+}
+
+
