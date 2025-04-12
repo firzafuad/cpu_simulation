@@ -29,13 +29,12 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 	char* token;
 	
 	if (sscanf(line, "%s %s %s", label, mnemonic, operand) != 3) { //verifier si il y a un label
-		printf("note: no label found\n");
 		if (sscanf(line, "%s %s", mnemonic, operand) != 2) { //si ce n'est pas le cas, rescanner sans label
 			printf("Invalid code instruction format: %s\n", line);
 			return NULL;
 		}
 	} else {
-		label[strcspn(label, ":")] = 0; // supprimer le ":" à la fin du label
+		label[strcspn(label, ":")] = '\0'; // supprimer le ":" à la fin du label
 		int *count = (int*)malloc(sizeof(int));
 		*count = code_count;
 		hashmap_insert(labels, label, count); //si le label est trouvé, l'ajouter à la hashmap
@@ -46,15 +45,12 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 		return NULL;
 	}
 	inst->mnemonic = strdup(mnemonic);
-	printf("ajout mnemonic : %s\n", inst->mnemonic);
 
 	token = strtok(operand, ",");
 	inst->operand1 = strdup(token);
-	printf("ajout operand1 : %s\n", inst->operand1);
 	
 	if ((token = strtok(NULL, ",")) != NULL) {
 		inst->operand2 = strdup(token);
-		printf("ajout operand2 : %s\n", inst->operand2);
 	} else {
 		inst->operand2 = strdup("");
 	}

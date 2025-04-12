@@ -11,12 +11,11 @@ CPU* cpu_init(int memory_size) {
     }
     cpu->memory_handler = memory_init(memory_size);
     cpu->context = hashmap_create();
-    int* val = (int*)malloc(sizeof(int));
-    *val = 0;
-    hashmap_insert(cpu->context, "AX", (void*) val);
-    hashmap_insert(cpu->context, "BX", (void*) val);
-    hashmap_insert(cpu->context, "CX", (void*) val);
-    hashmap_insert(cpu->context, "DX", (void*) val);
+
+    hashmap_insert(cpu->context, "AX", (void*) ((int*)malloc(sizeof(int))));
+    hashmap_insert(cpu->context, "BX", (void*) ((int*)malloc(sizeof(int))));
+    hashmap_insert(cpu->context, "CX", (void*) ((int*)malloc(sizeof(int))));
+    hashmap_insert(cpu->context, "DX", (void*) ((int*)malloc(sizeof(int))));
     
     return cpu;
 }
@@ -36,14 +35,14 @@ void cpu_destroy(CPU* cpu) {
         }
     }
     hashmap_destroy(cpu->memory_handler->allocated);
-    free(cpu->memory_handler->memory);
+	free(cpu->memory_handler->memory);
     free(cpu->memory_handler);
     free(cpu);
 }
 
 void* store(MemoryHandler *handler, const char *segment_name, int pos, void *data) {
     Segment* seg = (Segment*)hashmap_get(handler->allocated, segment_name);
-    if (!seg || pos < 0 || pos >= seg->size) {
+    if (!seg || pos < 0 || pos > seg->size) {
         printf("Invalid segment or position\n");
         return NULL;
     }
@@ -65,11 +64,11 @@ void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_coun
 	for (int i = 0; i < data_count; i++) {
 		int count = 0;
 		char *values = data_instructions[i]->operand2;
-		char *token = strtok(values, ",");
-		printf("count :\n");
+		char tabValues[256];
+		strcpy(tabValues, values);
+		char *token = strtok(tabValues, ",");
 		while (token != NULL ) {
 			count++;
-			printf("%s\n", token);
 			token = strtok(NULL, ",");
 		}
 		total += count;
@@ -85,21 +84,23 @@ void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_coun
 		seg = seg->next;
 	}
 	if (start == -1) {
-		printf("memory is full\n");
+		printf("no space available\n");
 		return ;
 	}
-	create_segment(cpu->memory_handler, "DS", start, total);
+	int res = create_segment(cpu->memory_handler, "DS", start, total);
+	if (res == 0) {
+		printf("error creating segment\n");
+		return ;
+	}
 	int j = 0;
 	for (int i = 0; i < data_count; i++) {
 		char *values = data_instructions[i]->operand2;
-		char *token = strtok(values, ",");
-		printf("count :\n");
+		char tabValues[256];
+		strcpy(tabValues, values);
+		char *token = strtok(tabValues, ",");
 		while (token != NULL ) {
-			printf("%s\n", token);
 			int *data = (int*)malloc(sizeof(int));
-			char *s = strdup(token);
-			*data = atoi(s);
-			free(s);
+			*data = atoi(token);
 			store(cpu->memory_handler, "DS", j++, (void*)data);
 			token = strtok(NULL, ",");
 		}
@@ -108,15 +109,17 @@ void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_coun
 
 void print_data_segment(CPU *cpu) {
 	Segment *seg = hashmap_get(cpu->memory_handler->allocated, "DS");
-	printf("%d %d\n", seg->start, seg->size);
 	if (seg == NULL) {
-		printf("erreur d'allocation\n");
+		printf("No data segment allocated\n");
 		return ;
 	}
-	int size = seg->size;
-	for (int i = 0; i < size; i++) {
-		int *val = (int *)load(cpu->memory_handler, "DS", i);
-		printf("%d\t", *val);
+	printf("memory location : (%d, %d)\n", seg->start, seg->size);
+	for (int i = 0; i < seg->size; i++) {
+		void *val = load(cpu->memory_handler, "DS", i);
+		if (val)
+			printf("[%d] : %d\n", i,  *(int*)val);
+		else
+			printf("[%d] : NULL\n", i);
 	}
 }
 
