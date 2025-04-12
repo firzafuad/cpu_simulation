@@ -11,6 +11,7 @@ CPU* cpu_init(int memory_size) {
     }
     cpu->memory_handler = memory_init(memory_size);
     cpu->context = hashmap_create();
+	cpu->constant_pool = hashmap_create();
 
     hashmap_insert(cpu->context, "AX", (void*) ((int*)malloc(sizeof(int))));
     hashmap_insert(cpu->context, "BX", (void*) ((int*)malloc(sizeof(int))));
@@ -23,6 +24,7 @@ CPU* cpu_init(int memory_size) {
 void cpu_destroy(CPU* cpu) {
     if (!cpu) return;
     hashmap_destroy(cpu->context);
+	hashmap_destroy(cpu->constant_pool);
     Segment* seg = cpu->memory_handler->free_list;
     while (seg) {
         Segment* next = seg->next;
