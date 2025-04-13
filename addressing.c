@@ -32,6 +32,7 @@ void *immediate_addressing(CPU *cpu, const char *operand) {
     }
     void *data = hashmap_get(cpu-> constant_pool, operand);
     if (data == NULL) {
+        // Si la valeur n'est pas déjà dans le constant_pool, l'ajouter
         hashmap_insert(cpu-> constant_pool, operand, value);
     } else {
         free(value);
@@ -53,8 +54,9 @@ void *memory_direct_addressing(CPU *cpu, const char *operand) {
     // Vérifier si l'opérande est un segment valide
     if (matches(MEMORY_DIRECT_PATTERN, operand)) {
         char pos[256];
+        // extraire la position entre crochets
         sscanf(operand, "[%s", pos);
-        pos[strcspn(pos, "]")] = '\0'; // supprimer le "]" à la fin
+        pos[strcspn(pos, "]")] = '\0';
         return load(cpu->memory_handler, "DS", atoi(pos)); //retourner la valeur stockèe dans le segment de données
     }
     printf("Invalid memory segment: %s\n", operand);
@@ -68,8 +70,9 @@ void *register_indirect_addressing(CPU *cpu, const char *operand) {
         return NULL;
     }
     char reg[256];
+    // extraire le registre entre crochets
     sscanf(operand, "[%s", reg);
-    reg[strcspn(reg, "]")] = '\0'; // supprimer le "]" à la fin
+    reg[strcspn(reg, "]")] = '\0';
     void *data = hashmap_get(cpu-> context, reg);
     if (data == NULL) {
         printf("Invalid register indirect addressing: %s\n", reg);
@@ -116,4 +119,18 @@ CPU* setup_test_environment () {
     }
     printf("Test environment initialized.\n") ;
     return cpu;
+}
+
+void *resolve_addressing(CPU *cpu, const char *operand) {
+    void *value = NULL;
+    if (value = immediate_addressing(cpu, operand))
+        return value;
+    if (value = register_addressing(cpu, operand))
+        return value;
+    if (value = memory_direct_addressing(cpu, operand))
+        return value;
+    if (value = register_indirect_addressing(cpu, operand))
+        return value;
+    printf("No matching addressing mode: %s\n", operand);
+    return NULL;
 }
