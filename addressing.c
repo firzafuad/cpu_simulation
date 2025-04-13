@@ -7,7 +7,7 @@
 #define IMMEDIATE_PATTERN "^[0-9]+$"
 #define REGISTER_PATTERN "^[ABCD]X$"
 #define MEMORY_DIRECT_PATTERN "^\\[([0-9])+\\]$"
-#define REGISTER_INDIRECT_PATTERN "^\\[([ABCD]X)\\]$"
+#define REGISTER_INDIRECT_PATTERN "^\\[(AX|BX|CX|DX)\\]$"
 
 int matches(const char* pattern, const char* string) {
     regex_t regex ;
@@ -55,8 +55,7 @@ void *memory_direct_addressing(CPU *cpu, const char *operand) {
         char pos[256];
         sscanf(operand, "[%s", pos);
         pos[strcspn(pos, "]")] = '\0'; // supprimer le "]" à la fin
-        printf("Memory direct addressing: %s\n", pos);
-        return hashmap_get(cpu->memory_handler->allocated , pos);
+        return load(cpu->memory_handler, "DS", atoi(pos)); //retourner la valeur stockèe dans le segment de données
     }
     printf("Invalid memory segment: %s\n", operand);
     return NULL;
@@ -64,8 +63,8 @@ void *memory_direct_addressing(CPU *cpu, const char *operand) {
 
 void *register_indirect_addressing(CPU *cpu, const char *operand) {
     // Vérifier si l'opérande est un registre valide
-    if (matches(REGISTER_INDIRECT_PATTERN, operand)) {
-        printf("Invalid register indirect addressing: %s\n", operand);
+    if (! matches(REGISTER_INDIRECT_PATTERN, operand)) {
+        printf("Invalid register: %s\n", operand);
         return NULL;
     }
     char reg[256];
@@ -79,12 +78,22 @@ void *register_indirect_addressing(CPU *cpu, const char *operand) {
     return load(cpu->memory_handler, "DS", *(int *)data); //retourner la valeur stockèe dans le segment de données
 }
 
+void handle_MOV(CPU* cpu, void* src, void* dest) {
+    // Vérifier si les deux opérandes sont valides
+    if (src == NULL || dest == NULL) {
+        printf("Invalid MOV operation: src or dest is NULL\n");
+        return;
+    }
+    // Effectuer l'opération MOV
+    *(int *)dest = *(int *)src;
+}
+
 CPU* setup_test_environment () {
     // Initialiser le CPU
     CPU* cpu = cpu_init(1024);
     if (! cpu ) {
         printf("Error: CPU initialization failed\n");
-        return NULL ;
+        return NULL;
     }
     // Initialiser les registres avec des valeurs specifiques
     int* ax = (int *)hashmap_get(cpu-> context, "AX");
