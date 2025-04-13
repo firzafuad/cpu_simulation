@@ -4,7 +4,12 @@
 #include <regex.h>
 #include "addressing.h"
 
-int matches ( const char * pattern , const char * string ) {
+#define IMMEDIATE_PATTERN "^[0-9]+$"
+#define REGISTER_PATTERN "^[ABCD]X$"
+#define MEMORY_DIRECT_PATTERN "^\\[([0-9])+\\]$"
+#define REGISTER_INDIRECT_PATTERN "^\\[([ABCD]X)\\]$"
+
+int matches(const char* pattern, const char* string) {
     regex_t regex ;
     int result = regcomp (&regex , pattern , REG_EXTENDED );
     if (result) {
@@ -14,6 +19,64 @@ int matches ( const char * pattern , const char * string ) {
     result = regexec (&regex , string , 0 , NULL , 0);
     regfree (&regex);
     return result == 0;
+}
+
+void *immediate_addressing(CPU *cpu, const char *operand) {
+    // Vérifier si l'opérande est un nombre immédiat
+    int res = matches(IMMEDIATE_PATTERN, operand);
+    int *value = (int *)malloc(sizeof(int));
+    if (!res || sscanf(operand, "%d", value) != 1) {
+        printf("Invalid immediate value: %s\n", operand);
+        free(value);
+        return NULL;
+    }
+    void *data = hashmap_get(cpu-> constant_pool, operand);
+    if (data == NULL) {
+        hashmap_insert(cpu-> constant_pool, operand, value);
+    } else {
+        free(value);
+        value = (int *)data;
+    }
+    return value;
+}
+
+void *register_addressing(CPU *cpu, const char *operand) {
+    // Vérifier si l'opérande est un registre valide
+    if (matches(REGISTER_PATTERN, operand)) {
+        return hashmap_get(cpu-> context, operand);
+    }
+    printf("Invalid register: %s\n", operand);
+    return NULL;
+}
+
+void *memory_direct_addressing(CPU *cpu, const char *operand) {
+    // Vérifier si l'opérande est un segment valide
+    if (matches(MEMORY_DIRECT_PATTERN, operand)) {
+        char pos[256];
+        sscanf(operand, "[%s", pos);
+        pos[strcspn(pos, "]")] = '\0'; // supprimer le "]" à la fin
+        printf("Memory direct addressing: %s\n", pos);
+        return hashmap_get(cpu->memory_handler->allocated , pos);
+    }
+    printf("Invalid memory segment: %s\n", operand);
+    return NULL;
+}
+
+void *register_indirect_addressing(CPU *cpu, const char *operand) {
+    // Vérifier si l'opérande est un registre valide
+    if (matches(REGISTER_INDIRECT_PATTERN, operand)) {
+        printf("Invalid register indirect addressing: %s\n", operand);
+        return NULL;
+    }
+    char reg[256];
+    sscanf(operand, "[%s", reg);
+    reg[strcspn(reg, "]")] = '\0'; // supprimer le "]" à la fin
+    void *data = hashmap_get(cpu-> context, reg);
+    if (data == NULL) {
+        printf("Invalid register indirect addressing: %s\n", reg);
+        return NULL;
+    }
+    return load(cpu->memory_handler, "DS", *(int *)data); //retourner la valeur stockèe dans le segment de données
 }
 
 CPU* setup_test_environment () {

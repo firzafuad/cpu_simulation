@@ -19,6 +19,9 @@ main_parser : main_parser.o parser.o segment.o exercice1.o
 main_parser.o: main_parser.c
 	$(CC) $(GCC_FLAGS) -c $<
 
+addressing.o: addressing.c addressing.h cpu.o
+	$(CC) $(GCC_FLAGS) -c $<
+
 cpu.o: cpu.c cpu.h parser.o
 	$(CC) $(GCC_FLAGS) -c $<
 	
