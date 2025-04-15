@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "addressing.h"
+#include "cpu_core.h"
 
 int main() {
     CPU *cpu = setup_test_environment();

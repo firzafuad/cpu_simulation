@@ -8,7 +8,7 @@ all: $(EXE)
 %.o: %.c
 	$(CC) $(GCC_FLAGS) -c $^
 
-main_address : main_address.o addressing.o cpu.o parser.o segment.o exercice1.o
+main_address : main_address.o cpu_core.o cpu.o parser.o segment.o exercice1.o
 	$(CC) $(GCC_FLAGS) -o $@ $^	
 
 main_cpu : main_cpu.o cpu.o parser.o segment.o exercice1.o
@@ -26,7 +26,7 @@ main_cpu.o: main_cpu.c
 main_parser.o: main_parser.c
 	$(CC) $(GCC_FLAGS) -c $<
 
-addressing.o: addressing.c addressing.h cpu.o
+cpu_core.o: cpu_core.c cpu_core.h cpu.o
 	$(CC) $(GCC_FLAGS) -c $<
 
 cpu.o: cpu.c cpu.h parser.o

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <regex.h>
-#include "addressing.h"
+#include "cpu_core.h"
 
 #define IMMEDIATE_PATTERN "^[0-9]+$"
 #define REGISTER_PATTERN "^[ABCD]X$"
