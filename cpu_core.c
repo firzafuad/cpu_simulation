@@ -221,3 +221,117 @@ int resolve_constants(ParserResult *result) {
 
     return 1;
 }
+
+int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
+    if (strcmp(instr->mnemonic, "MOV") == 0) {
+        handle_MOV(cpu, src, dest);
+
+    } else if (strcmp(instr->mnemonic, "ADD") == 0) {
+        if (src == NULL || dest == NULL) {
+            printf("Invalid ADD operation: src or dest is NULL\n");
+            return 0;
+        }
+        *(int *)dest += *(int *)src;
+
+    } else if (strcmp(instr->mnemonic, "CMP") == 0) {
+        if (src == NULL || dest == NULL) {
+            printf("Invalid CMP operation: src or dest is NULL\n");
+            return 0;
+        }
+        // Mettre à jour les indicateurs ZF et SF
+        int *zf = (int *)hashmap_get(cpu->context, "ZF");
+        int *sf = (int *)hashmap_get(cpu->context, "SF");
+        *zf = (*(int *)dest == *(int *)src);
+        *sf = (*(int *)dest < *(int *)src);
+
+    } else if (strcmp(instr->mnemonic, "JMP") == 0) {
+        void *ip = hashmap_get(cpu->context, "IP");
+        handle_MOV(cpu, dest, ip);
+
+    } else if (strcmp(instr->mnemonic, "JZ") == 0) {
+        int *zf = (int *)hashmap_get(cpu->context, "ZF");
+        if (*zf == 1) {
+            void *ip = hashmap_get(cpu->context, "IP");
+            handle_MOV(cpu, dest, ip);
+        }
+
+    } else if (strcmp(instr->mnemonic, "JNZ") == 0) {
+        int *zf = (int *)hashmap_get(cpu->context, "ZF");
+        if (*zf == 0) {
+            void *ip = hashmap_get(cpu->context, "IP");
+            handle_MOV(cpu, dest, ip);
+        }
+
+    } else if (strcmp(instr->mnemonic, "HALT") == 0) {
+        Segment *seg = hashmap_get(cpu->memory_handler->allocated, "CS");
+        handle_MOV(cpu, (void *)seg->size, hashmap_get(cpu->context, "IP"));
+
+    } else {
+        printf("Unknown instruction: %s\n", instr->mnemonic);
+        return 0;
+    }
+    return 1;
+}
+
+int execute_instruction(CPU *cpu, Instruction *instr) {
+    if (!instr) return 0;
+    // Résoudre les opérandes
+    void *dest = resolve_addressing(cpu, instr->operand1);
+    void *src = resolve_addressing(cpu, instr->operand2);
+
+    if (!src || !dest) {
+        printf("Invalid operands for instruction: %s\n", instr->mnemonic);
+        return 0;
+    }
+
+    // Traiter l'instruction
+    return handle_instruction(cpu, instr, src, dest);
+}
+
+Instruction* fetch_next_instruction(CPU *cpu) {
+    int *ip = (int *)hashmap_get(cpu->context, "IP");
+    Segment *seg = hashmap_get(cpu->memory_handler->allocated, "CS");
+    if (!seg || *ip < 0 || *ip >= seg->size) {
+        printf("Invalid instruction pointer\n");
+        return NULL;
+    }
+    return (Instruction *)load(cpu->memory_handler, "CS", *ip++);
+}
+
+int run_program(CPU *cpu) {
+    if (!cpu) return 0;
+
+    // Afficher l'état initial du CPU
+    print_data_segment(cpu);
+    char *registres[] = {"AX", "BX", "CX", "DX", "IP", "ZF", "SF"};
+    for (int i = 0; i < 7; i++) {
+        int *val = (int *)hashmap_get(cpu->context, registres[i]);
+        if (val) {
+            printf("%s: %d\n", registres[i], *val);
+        } else {
+            printf("%s: NULL\n", registres[i]);
+        }
+    }
+
+    // Exécuter le programme
+    Instruction *instr = fetch_next_instruction(cpu);
+    while (instr) {
+        if (!execute_instruction(cpu, instr)) {
+            printf("Error executing instruction\n");
+            return 0;
+        }
+        instr = fetch_next_instruction(cpu);
+    }
+
+    // Afficher l'état final du CPU
+    print_data_segment(cpu);
+    for (int i = 0; i < 7; i++) {
+        int *val = (int *)hashmap_get(cpu->context, registres[i]);
+        if (val) {
+            printf("%s: %d\n", registres[i], *val);
+        } else {
+            printf("%s: NULL\n", registres[i]);
+        }
+    }
+    return 1;
+}
