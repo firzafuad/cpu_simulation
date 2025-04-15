@@ -2,7 +2,7 @@
 
 typedef struct {
     MemoryHandler* memory_handler; // Gestionnaire de memoire
-    HashMap* context; // Registres (AX, BX, CX, DX)
+    HashMap* context; // Registres (AX, BX, CX, DX, IP, ZF, SF)
     HashMap* constant_pool; // Table de hachage pour stocker les valeurs immediates
 } CPU ;
 

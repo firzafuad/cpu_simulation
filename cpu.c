@@ -16,12 +16,15 @@ CPU* cpu_init(int memory_size) {
 	int *val = (int*)malloc(sizeof(int));
 	*val = 0;
     hashmap_insert(cpu->context, "AX", (void*)val);
+
 	val = (int*)malloc(sizeof(int));
 	*val = 0;
     hashmap_insert(cpu->context, "BX", (void*)val);
+
 	val = (int*)malloc(sizeof(int));
 	*val = 0;
     hashmap_insert(cpu->context, "CX", (void*)val);
+
 	val = (int*)malloc(sizeof(int));
 	*val = 0;
     hashmap_insert(cpu->context, "DX", (void*)val);
@@ -127,6 +130,38 @@ void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_coun
 			token = strtok(NULL, ",");
 		}
 	}
+}
+
+void allocate_code_segment(CPU *cpu, Instruction **code_instructions, int code_count) {
+	int start = -1;
+	Segment *seg = cpu->memory_handler->free_list;
+	while (seg != NULL) {
+		if (seg->size >= code_count) {
+			start = seg->start;
+			break;
+		}
+		seg = seg->next;
+	}
+	if (start == -1) {
+		printf("no space available\n");
+		return ;
+	}
+
+	// Créer le code segment
+	int res = create_segment(cpu->memory_handler, "CS", start, code_count);
+	if (res == 0) {
+		printf("error creating segment\n");
+		return ;
+	}
+	// Stocker les instructions dans le segment de code
+	for (int i = 0; i < code_count; i++) {
+		store(cpu->memory_handler, "CS", i, (void*)code_instructions[i]);
+	}
+
+	// Initialiser le registre IP à 0
+	int *ip = (int *)hashmap_get(cpu->context, "IP");
+	*ip = 0;
+
 }
 
 void print_data_segment(CPU *cpu) {
