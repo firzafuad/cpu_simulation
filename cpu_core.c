@@ -9,6 +9,7 @@
 #define MEMORY_DIRECT_PATTERN "^\\[([0-9])+\\]$"
 #define REGISTER_INDIRECT_PATTERN "^\\[(AX|BX|CX|DX)\\]$"
 
+//Exercice 5 :
 int matches(const char* pattern, const char* string) {
     regex_t regex ;
     int result = regcomp (&regex , pattern , REG_EXTENDED );
@@ -123,14 +124,100 @@ CPU* setup_test_environment () {
 
 void *resolve_addressing(CPU *cpu, const char *operand) {
     void *value = NULL;
-    if (value = immediate_addressing(cpu, operand))
+    if ( (value = immediate_addressing(cpu, operand)) )
         return value;
-    if (value = register_addressing(cpu, operand))
+    if ( (value = register_addressing(cpu, operand)) )
         return value;
-    if (value = memory_direct_addressing(cpu, operand))
+    if ( (value = memory_direct_addressing(cpu, operand)) )
         return value;
-    if (value = register_indirect_addressing(cpu, operand))
+    if ( (value = register_indirect_addressing(cpu, operand)) )
         return value;
     printf("No matching addressing mode: %s\n", operand);
     return NULL;
+}
+
+
+//Exercice 6 :
+char *trim(char *str) {
+    while (*str == '`' || *str == '\t' || *str == '\n' || *str == '\r') str++;
+
+    char *end = str + strlen(str) - 1;
+    while (end > str && (*end == '`' || *end == '\t' || *end == '\n' || *end == '\r')) {
+        *end = '\0';
+        end--;
+    }
+    return str ;
+}
+
+int search_and_replace (char **str, HashMap *values) {
+    if (!str || !*str || !values ) return 0;
+
+    int replaced = 0;
+    char * input = * str ;
+
+    // Iterate through all keys in the hashmap
+    for (int i = 0; i < values->size; i ++) {
+        if (values->table[i].key && values->table[i].key != (void *)-1) {
+            char *key = values->table[i].key;
+            //j'ai changé le cast de (int) (long) à *(int *) pour bien recuperer la valeur
+            int value = *(int *)values->table[i].value;
+
+            // Find potential substring match
+            char *substr = strstr(input, key);
+            if (substr) {
+                // Construct replacement buffer
+                char replacement[64];
+                snprintf(replacement, sizeof(replacement), "%d", value);
+
+                // Calculate lengths
+                int key_len = strlen(key);
+                int repl_len = strlen(replacement);
+                int remain_len = strlen ( substr + key_len ) ;
+
+                // Create new string
+                char *new_str = (char *)malloc(strlen(input) - key_len + repl_len + 1);
+                strncpy(new_str, input, substr - input);
+                new_str[substr - input] = '\0';
+                strcat(new_str, replacement);
+                strcat(new_str, substr + key_len);
+
+                // Free and update original string
+                free(input);
+                *str = new_str;
+                input = new_str;
+
+                replaced = 1;
+            }
+        }
+    }
+
+    // Trim the final string
+    if (replaced) {
+        char *trimmed = trim(input);
+        if (trimmed != input) {
+            memmove(input, trimmed, strlen(trimmed) + 1);
+        }
+    }
+
+    return replaced ;
+}
+
+int resolve_constants(ParserResult *result) {
+    if (!result) return 0;
+
+    // Iterate toutes les cases de tableau code instructions
+    for (int i = 0; i < result->code_count; i++) {
+        Instruction *instr = result->code_instructions[i];
+        if (strcmp(instr->operand2, "") != 0) {
+            if (! search_and_replace(&instr->operand2, result->memory_locations)) {
+                printf("error: replacement fault at index %d\n", i);
+            }
+        } else {
+            if (! search_and_replace(&instr->operand1, result->labels)) {
+                printf("error: replacement fault at index %d\n", i);
+            }
+        }
+    }
+
+    return 1;
 }

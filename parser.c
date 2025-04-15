@@ -3,6 +3,9 @@
 #include <string.h>
 #include "parser.h"
 
+//initialiser une variable static pour stocker l'adresse mémoire
+static int current_address = 0;
+
 Instruction *parse_data_instruction(const char *line, HashMap* memory_locations) {
 	char mnemonic[256], operand1[256], operand2[256];
 	if (sscanf(line, "%s %s %s", mnemonic, operand1, operand2) != 3) {
@@ -15,11 +18,19 @@ Instruction *parse_data_instruction(const char *line, HashMap* memory_locations)
 	inst->operand1 = strdup(operand1);
 	inst->operand2 = strdup(operand2);
 	
+	//calculer le nombre de valeur en operand2
+	int count = 0;
 	char *token = strtok(operand2, ",");
 	while (token != NULL) {
-		hashmap_insert(memory_locations, inst->mnemonic, strdup(token));
+		count++;
 		token = strtok(NULL, ",");
 	}
+	//ajouter l'adresse memoire à la hashmap
+	int *addr = (int*)malloc(sizeof(int));
+	*addr = current_address;
+	hashmap_insert(memory_locations, inst->mnemonic, (void *)addr);
+	
+	current_address += count; //mise à	jour de la variable static
 	return inst;
 }
 	

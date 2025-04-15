@@ -13,7 +13,7 @@ int main() {
 	for (int i = 0; i < p->memory_locations->size; i++)
 	{
 		if (p->memory_locations->table[i].key != NULL) {
-			printf("%s %d\n", p->memory_locations->table[i].key, i);
+			printf("%s %d\n", p->memory_locations->table[i].key, *(int *)(p->memory_locations->table[i].value));
 		}
 	}
 	

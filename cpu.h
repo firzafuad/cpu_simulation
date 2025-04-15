@@ -11,4 +11,5 @@ void cpu_destroy(CPU* cpu);
 void* store(MemoryHandler *handler, const char *segment_name, int pos, void *data);
 void* load(MemoryHandler *handler, const char *segment_name, int pos);
 void allocate_variables(CPU* cpu, Instruction**data_instructions, int data_count);
+void allocate_code_segment(CPU *cpu, Instruction **code_instructions, int code_count);
 void print_data_segment(CPU *cpu);
