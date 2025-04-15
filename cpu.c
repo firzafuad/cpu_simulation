@@ -13,10 +13,30 @@ CPU* cpu_init(int memory_size) {
     cpu->context = hashmap_create();
 	cpu->constant_pool = hashmap_create();
 
-    hashmap_insert(cpu->context, "AX", (void*) ((int*)malloc(sizeof(int))));
-    hashmap_insert(cpu->context, "BX", (void*) ((int*)malloc(sizeof(int))));
-    hashmap_insert(cpu->context, "CX", (void*) ((int*)malloc(sizeof(int))));
-    hashmap_insert(cpu->context, "DX", (void*) ((int*)malloc(sizeof(int))));
+	int *val = (int*)malloc(sizeof(int));
+	*val = 0;
+    hashmap_insert(cpu->context, "AX", (void*)val);
+	val = (int*)malloc(sizeof(int));
+	*val = 0;
+    hashmap_insert(cpu->context, "BX", (void*)val);
+	val = (int*)malloc(sizeof(int));
+	*val = 0;
+    hashmap_insert(cpu->context, "CX", (void*)val);
+	val = (int*)malloc(sizeof(int));
+	*val = 0;
+    hashmap_insert(cpu->context, "DX", (void*)val);
+
+	val = (int*)malloc(sizeof(int));
+	*val = 0;
+    hashmap_insert(cpu->context, "IP", (void*)val);
+
+	val = (int*)malloc(sizeof(int));
+	*val = 0;
+    hashmap_insert(cpu->context, "ZF", (void*)val);
+
+	val = (int*)malloc(sizeof(int));
+	*val = 0;
+    hashmap_insert(cpu->context, "SF", (void*)val);
     
     return cpu;
 }
