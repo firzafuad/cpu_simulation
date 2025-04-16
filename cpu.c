@@ -54,13 +54,25 @@ void cpu_destroy(CPU* cpu) {
         free(seg);
         seg = next;
     }
-    for (int i = 0; i < cpu->memory_handler->total_size; i++) {
-        if (cpu->memory_handler->memory[i]) {
-            free(cpu->memory_handler->memory[i]);
-        }
-    }
-    hashmap_destroy(cpu->memory_handler->allocated);
+    seg = (Segment*)hashmap_get(cpu->memory_handler->allocated, "DS");
+	for (int i = 0; i < seg->size; i++) {
+		void *val = load(cpu->memory_handler, "DS", i);
+		if (val) {
+			free(val);
+		}
+	}
+	seg = (Segment*)hashmap_get(cpu->memory_handler->allocated, "CS");
+	for (int i = 0; i < seg->size; i++) {
+		Instruction *val = (Instruction *)load(cpu->memory_handler, "CS", i);
+		if (val) {
+			free(val->mnemonic);
+			free(val->operand1);
+			free(val->operand2);
+			free(val);
+		}
+	}
 	free(cpu->memory_handler->memory);
+    hashmap_destroy(cpu->memory_handler->allocated);
     free(cpu->memory_handler);
     free(cpu);
 }
@@ -155,7 +167,18 @@ void allocate_code_segment(CPU *cpu, Instruction **code_instructions, int code_c
 	}
 	// Stocker les instructions dans le segment de code
 	for (int i = 0; i < code_count; i++) {
-		store(cpu->memory_handler, "CS", i, (void*)code_instructions[i]);
+		Instruction *instr = (Instruction *)malloc(sizeof(Instruction));
+		instr->mnemonic = strdup(code_instructions[i]->mnemonic);
+		instr->operand1 = strdup(code_instructions[i]->operand1);
+		instr->operand2 = strdup(code_instructions[i]->operand2);
+		if (! store(cpu->memory_handler, "CS", i, (void *)instr)) {
+			free(instr->mnemonic);
+			free(instr->operand1);
+			free(instr->operand2);
+			free(instr);
+			fprintf(stderr, "error storing instruction\n");
+			return ;
+		}
 	}
 
 	// Initialiser le registre IP à 0

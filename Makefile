@@ -1,7 +1,7 @@
 GCC_FLAGS=-Wall -g
 GCC_LIB_FLAGS=-fpic -static
 CC=gcc
-EXE=main_parser main_cpu main_address
+EXE=main_parser main main_address
 
 all: $(EXE)
 
@@ -11,7 +11,7 @@ all: $(EXE)
 main_address : main_address.o cpu_core.o cpu.o parser.o segment.o exercice1.o
 	$(CC) $(GCC_FLAGS) -o $@ $^	
 
-main_cpu : main_cpu.o cpu.o parser.o segment.o exercice1.o
+main : main.o cpu_core.o cpu.o parser.o segment.o exercice1.o
 	$(CC) $(GCC_FLAGS) -o $@ $^	
 	
 main_parser : main_parser.o parser.o segment.o exercice1.o
@@ -20,7 +20,7 @@ main_parser : main_parser.o parser.o segment.o exercice1.o
 main_address.o: main_address.c
 	$(CC) $(GCC_FLAGS) -c $<
 
-main_cpu.o: main_cpu.c
+main.o: main.c
 	$(CC) $(GCC_FLAGS) -c $<
 
 main_parser.o: main_parser.c
