@@ -6,7 +6,7 @@
 CPU* cpu_init(int memory_size) {
     CPU* cpu = (CPU*)malloc(sizeof(CPU));
     if (!cpu) {
-        printf("Memory allocation failed\n");
+        fprintf(stderr, "Memory allocation failed\n");
         return NULL;
     }
     cpu->memory_handler = memory_init(memory_size);
@@ -43,7 +43,7 @@ CPU* cpu_init(int memory_size) {
     
 	int res = create_segment(cpu->memory_handler, "SS", 0, 128);
 	if (res == 0) {
-		printf("error creating segment\n");
+		fprintf(stderr, "error creating segment SS\n");
 		cpu_destroy(cpu);
 		return NULL;
 	}
@@ -98,7 +98,7 @@ void cpu_destroy(CPU* cpu) {
 void* store(MemoryHandler *handler, const char *segment_name, int pos, void *data) {
     Segment* seg = (Segment*)hashmap_get(handler->allocated, segment_name);
     if (!seg || pos < 0 || pos > seg->size) {
-        printf("Invalid segment or position\n");
+        fprintf(stderr, "Invalid segment or position (%d)\n", pos);
         return NULL;
     }
     handler->memory[seg->start + pos] = data;
@@ -108,7 +108,7 @@ void* store(MemoryHandler *handler, const char *segment_name, int pos, void *dat
 void* load(MemoryHandler *handler, const char *segment_name, int pos) {
     Segment* seg = (Segment*)hashmap_get(handler->allocated, segment_name);
     if (!seg || pos < 0 || pos >= seg->size) {
-        printf("Invalid segment or position\n");
+        fprintf(stderr, "Invalid segment or position (%d)\n", pos);
         return NULL;
     }
     return handler->memory[seg->start + pos];
@@ -139,12 +139,12 @@ void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_coun
 		seg = seg->next;
 	}
 	if (start == -1) {
-		printf("no space available\n");
+		fprintf(stderr, "no space available for data length %d\n", total);
 		return ;
 	}
 	int res = create_segment(cpu->memory_handler, "DS", start, total);
 	if (res == 0) {
-		printf("error creating segment\n");
+		fprintf(stderr, "error creating segment [%d,%d]\n", start, total);
 		return ;
 	}
 	int j = 0;
@@ -173,14 +173,14 @@ void allocate_code_segment(CPU *cpu, Instruction **code_instructions, int code_c
 		seg = seg->next;
 	}
 	if (start == -1) {
-		printf("no space available\n");
+		fprintf(stderr, "no space available for code length %d\n", code_count);
 		return ;
 	}
 
 	// Créer le code segment
 	int res = create_segment(cpu->memory_handler, "CS", start, code_count);
 	if (res == 0) {
-		printf("error creating segment\n");
+		fprintf(stderr, "error creating segment [%d,%d]\n", start, code_count);
 		return ;
 	}
 	// Stocker les instructions dans le segment de code
@@ -190,11 +190,11 @@ void allocate_code_segment(CPU *cpu, Instruction **code_instructions, int code_c
 		instr->operand1 = strdup(code_instructions[i]->operand1);
 		instr->operand2 = strdup(code_instructions[i]->operand2);
 		if (! store(cpu->memory_handler, "CS", i, (void *)instr)) {
+			fprintf(stderr, "error storing instruction: %s %s %s\n", instr->mnemonic, instr->operand1, instr->operand2);
 			free(instr->mnemonic);
 			free(instr->operand1);
 			free(instr->operand2);
 			free(instr);
-			fprintf(stderr, "error storing instruction\n");
 			return ;
 		}
 	}

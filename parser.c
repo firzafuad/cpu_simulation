@@ -9,7 +9,7 @@ static int current_address = 0;
 Instruction *parse_data_instruction(const char *line, HashMap* memory_locations) {
 	char mnemonic[256], operand1[256], operand2[256];
 	if (sscanf(line, "%s %s %s", mnemonic, operand1, operand2) != 3) {
-		printf("Invalid data instruction format: %s\n", line);
+		fprintf(stderr, "Invalid data instruction format: %s\n", line);
 		return NULL;
 	}
 
@@ -48,7 +48,7 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 				return inst;
 			}
 			free(inst);
-			printf("Invalid code instruction format: %s\n", line);
+			fprintf(stderr, "Invalid code instruction format: %s\n", line);
 			return NULL;
 		}
 	} else {
@@ -58,7 +58,7 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 		hashmap_insert(labels, label, count); //si le label est trouvé, l'ajouter à la hashmap
 	}
 	if (!inst) {
-		printf("Memory allocation failed\n");
+		fprintf(stderr, "Memory allocation failed\n");
 		return NULL;
 	}
 	inst->mnemonic = strdup(mnemonic);
@@ -78,7 +78,7 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 ParserResult *parse(const char *filename) {
 	FILE* f = fopen(filename, "r");
 	if (!f) {
-		printf("Failed to open file\n");
+		fprintf(stderr, "Failed to open file\n");
 		return NULL;
 	}
 	

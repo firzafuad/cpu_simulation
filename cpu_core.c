@@ -236,14 +236,14 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
 
     } else if (strcmp(instr->mnemonic, "ADD") == 0) {
         if (src == NULL || dest == NULL) {
-            printf("Invalid ADD operation: src or dest is NULL\n");
+            fprintf(stderr, "Invalid ADD operation: src or dest is NULL\n");
             return 0;
         }
         *(int *)dest += *(int *)src;
 
     } else if (strcmp(instr->mnemonic, "CMP") == 0) {
         if (src == NULL || dest == NULL) {
-            printf("Invalid CMP operation: src or dest is NULL\n");
+            fprintf(stderr, "Invalid CMP operation: src or dest is NULL\n");
             return 0;
         }
         // Mettre à jour les indicateurs ZF et SF
@@ -253,10 +253,18 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
         *sf = (*(int *)dest < *(int *)src);
 
     } else if (strcmp(instr->mnemonic, "JMP") == 0) {
+        if (dest == NULL) {
+            fprintf(stderr, "Invalid JMP operation: dest is NULL\n");
+            return 0;
+        }
         void *ip = hashmap_get(cpu->context, "IP");
         handle_MOV(cpu, dest, ip);
 
     } else if (strcmp(instr->mnemonic, "JZ") == 0) {
+        if (dest == NULL) {
+            fprintf(stderr, "Invalid JZ operation: dest is NULL\n");
+            return 0;
+        }
         int *zf = (int *)hashmap_get(cpu->context, "ZF");
         if (*zf == 1) {
             void *ip = hashmap_get(cpu->context, "IP");
@@ -264,6 +272,10 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
         }
 
     } else if (strcmp(instr->mnemonic, "JNZ") == 0) {
+        if (dest == NULL) {
+            fprintf(stderr, "Invalid JNZ operation: dest is NULL\n");
+            return 0;
+        }
         int *zf = (int *)hashmap_get(cpu->context, "ZF");
         if (*zf == 0) {
             void *ip = hashmap_get(cpu->context, "IP");
@@ -277,7 +289,7 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
         else 
             reg = (int *)hashmap_get(cpu->context, (char *)src);
         if (push_value(cpu, *(int *)reg) == -1) {
-            fprintf(stderr, "Error pushing value onto stack\n");
+            fprintf(stderr, "Error pushing value %d onto stack\n", *(int *)reg);
             return 0;
         }
 
@@ -288,7 +300,7 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
         else 
             reg = (int *)hashmap_get(cpu->context, (char *)src);
         if (pop_value(cpu, (int *)reg) == -1) {
-            fprintf(stderr, "Error popping value from stack\n");
+            fprintf(stderr, "Error popping value %d from stack\n", *(int *)reg);
             return 0;
         }
 
@@ -297,7 +309,7 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
         handle_MOV(cpu, (void *) &seg->size, hashmap_get(cpu->context, "IP"));
 
     } else if (strcmp(instr->mnemonic, "ALLOC") == 0) {
-        if (!alloc_es_segment(cpu) )
+        if (!alloc_es_segment(cpu))
             return 0;
 
     } else if (strcmp(instr->mnemonic, "FREE") == 0) {
