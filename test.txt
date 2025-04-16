@@ -1,8 +1,17 @@
 .DATA
-x DW 42
-arr DB 20,21,22,23
-y DB 10
+x DW 3
+y DB 4
+arr DB 5,6,7,8
+z DB 10
 .CODE
 start: MOV AX,x
-loop: ADD AX,y
+MOV BX,[AX]
+ADD BX,y
+MOV [arr],BX
+loop: MOV CX,[arr]
+INC CX
+MOV [arr],CX
+CMP CX,10
+JZ end
 JMP loop
+end: HALT

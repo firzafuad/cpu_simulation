@@ -43,7 +43,7 @@ int main() {
     int* dx = (int *)hashmap_get(cpu->context, "DX");
     *ax = 3;
     *bx = 6;
-    *cx = 100;
+    *cx = 1;
     *dx = 0;
 	allocate_variables(cpu, p->data_instructions, p->data_count);
 	allocate_code_segment(cpu, p->code_instructions, p->code_count);
