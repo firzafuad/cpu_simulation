@@ -41,6 +41,19 @@ CPU* cpu_init(int memory_size) {
 	*val = 0;
     hashmap_insert(cpu->context, "SF", (void*)val);
     
+	int res = create_segment(cpu->memory_handler, "SS", 0, 128);
+	if (res == 0) {
+		printf("error creating segment\n");
+		cpu_destroy(cpu);
+		return NULL;
+	}
+	val = (int*)malloc(sizeof(int));
+	*val = 127;
+    hashmap_insert(cpu->context, "SP", (void*)val);
+
+	val = (int*)malloc(sizeof(int));
+	*val = 0;
+    hashmap_insert(cpu->context, "BP", (void*)val);
     return cpu;
 }
 

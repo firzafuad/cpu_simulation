@@ -267,6 +267,28 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
             handle_MOV(cpu, dest, ip);
         }
 
+    } else if (strcmp(instr->mnemonic, "PUSH") == 0) {
+        int *reg;
+        if (src == NULL)
+            reg = (int *)hashmap_get(cpu->context, "AX");
+        else 
+            reg = (int *)hashmap_get(cpu->context, (char *)src);
+        if (push_value(cpu, *(int *)reg) == -1) {
+            fprintf(stderr, "Error pushing value onto stack\n");
+            return 0;
+        }
+
+    } else if (strcmp(instr->mnemonic, "POP") == 0) {
+        int *reg;
+        if (src == NULL)
+            reg = (int *)hashmap_get(cpu->context, "AX");
+        else 
+            reg = (int *)hashmap_get(cpu->context, (char *)src);
+        if (pop_value(cpu, (int *)reg) == -1) {
+            fprintf(stderr, "Error popping value from stack\n");
+            return 0;
+        }
+
     } else if (strcmp(instr->mnemonic, "HALT") == 0) {
         Segment *seg = hashmap_get(cpu->memory_handler->allocated, "CS");
         handle_MOV(cpu, (void *) &seg->size, hashmap_get(cpu->context, "IP"));
@@ -349,5 +371,54 @@ int run_program(CPU *cpu) {
             printf("%s: NULL\n", registres[i]);
         }
     }
+    return 1;
+}
+
+
+//Exercice 7 :
+int push_value(CPU *cpu, int value) {
+    Segment *seg = hashmap_get(cpu->memory_handler->allocated, "SS");
+    if (!seg) {
+        fprintf(stderr, "Stack segment not found\n");
+        return -1;
+    }
+
+    // Vérifier si le pointeur de pile est valide
+    int *sp = (int *)hashmap_get(cpu->context, "SP");
+    if (*sp < 0 || *sp >= seg->size) {
+        fprintf(stderr, "Stack pointer out of bounds\n");
+        return -1;
+    }
+
+    int *val = (int *)malloc(sizeof(int));
+    *val = value;
+    if (!store(cpu->memory_handler, "SS", *sp, val)) {
+        free(val);
+        return -1;
+    }
+    (*sp)--;
+    return 1;
+}
+
+int pop_value(CPU *cpu, int *value) {
+    Segment *seg = hashmap_get(cpu->memory_handler->allocated, "SS");
+    if (!seg) {
+        fprintf(stderr, "Stack segment not found\n");
+        return -1;
+    }
+
+    // Vérifier si le pointeur de pile est valide
+    int *sp = (int *)hashmap_get(cpu->context, "SP");
+    if ((*sp)+1 < 0 || (*sp)+1 >= seg->size) {
+        fprintf(stderr, "Stack pointer out of bounds\n");
+        return -1;
+    }
+    (*sp)++;
+    void *val = load(cpu->memory_handler, "SS", *sp);
+    if (!val) {
+        return -1;
+    }
+    *value = *(int *)val;
+    free(val);
     return 1;
 }
