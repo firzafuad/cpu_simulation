@@ -27,6 +27,7 @@ HashMap* hashmap_create() {
 
 int hashmap_insert(HashMap* map, const char *key, void* value) {
 	unsigned long idx = simple_hash(key);
+	//parcourir la table de hachage a partir de l'indice idx jusqu'a ce qu'on trouve une case vide ou une case avec la valeur TOMBSTONE
 	for (int i = 0; i < map->size; i++) {
 		if(idx >= map->size) {
 			idx=0;
@@ -61,7 +62,10 @@ int hashmap_remove(HashMap *map, const char *key) {
         HashEntry *entry = &map->table[curr];
         
         if (!entry->key) {
-            if (entry->value != TOMBSTONE) return 0;
+            if (entry->value != TOMBSTONE) {
+				fprintf(stderr, "Key not found: %s\n", key);
+				return 0;
+			}
         } else if (strcmp(entry->key, key) == 0) {
             // Free key and mark as TOMBSTONE
             free(entry->key);

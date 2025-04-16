@@ -35,6 +35,7 @@ int create_segment(MemoryHandler *handler, const char *name, int start, int size
 	Segment *seg = find_free_segment(handler, start, size, &prev);
 	if (!seg) return 0;
 	
+	// Initialiser le segment
 	Segment* new_seg = (Segment*)malloc(sizeof(Segment));
 	if (!new_seg) return 0;
 	new_seg->start = start;
@@ -45,18 +46,24 @@ int create_segment(MemoryHandler *handler, const char *name, int start, int size
 	int end = start + size;
 	int segEnd = seg->start + seg->size;
 	if (start == seg->start) {
+		// Cas 1 : Le debut du segment est le debut d'un segment libre
 		if (end == segEnd) {
+			// Cas 1.1 : le segment est exactement égal à un segment libre
 			if (prev) prev->next = seg->next;
 			else handler->free_list = seg->next;
 			free(seg);
 		} else {
+			// Cas 1.2 : le segment est plus petit que le segment libre
 			seg->start = end;
 			seg->size = segEnd - end;
 		}
 	} else {
+		// Cas 2 : Le debut du segment est au milieu d'un segment libre
 		if (end == segEnd) {
+			// Cas 2.1 : le segment se situe a la fin d'un segment libre
 			seg->size = start - seg->start;
 		} else {
+			// Cas 2.2 : la fin de segment est au milieu d'un segment libre
 			Segment* next_seg = (Segment*)malloc(sizeof(Segment));
 			if (!next_seg) return 0;
 			next_seg->start = end;
@@ -82,32 +89,47 @@ int remove_segment(MemoryHandler* handler, const char *name) {
 		ls = ls->next;
 	}
 	if (ls == NULL) {
+		// Cas 1 : le segment est à la fin de la liste
 		if ( (prev->start + prev->size) == seg->start) {
+			// Cas 1.1 : le segment est adjacent au segment libre
 			prev->size += seg->size;
 		} else {
+			// Cas 1.2 : le segment n'est pas adjacent au segment libre
 			prev->next = seg;
 		}
 	} else if (prev == NULL) {
+		// Cas 2 : le segment est au debut de la liste
 		if((seg->start + seg->size) == ls->start) {
+			// Cas 2.1 : le segment est adjacent au segment libre
 			seg->size += ls->size;
 			seg->next = ls->next;
 			free(ls);
+		} else {
+			// Cas 2.2 : le segment n'est pas adjacent au segment libre
+			seg->next = ls;
+			handler->free_list = seg;
 		}
-	} else {	
+	} else {
+		// Cas 3 : le segment est au milieu de la liste
 		if ( (prev->start + prev->size) == seg->start) {
+			// Cas 3.1 : le segment est adjacent au segment libre precedent
 			prev->size += seg->size;
 			if ( (prev->start + prev->size) == ls->start) {
+				// Cas 3.1.1 : le segment est adjacent au segment libre suivant
 				prev->size += ls->size;
 				prev->next = ls->next;
 				free(ls);
 			}
 			free(seg);
 		} else {
+			// Cas 3.2 : le segment n'est pas adjacent au segment libre precedent
 			if ((seg->start+seg->size == ls->start)) {
+				// Cas 3.2.1 : le segment est adjacent au segment libre suivant
 				ls->start = seg->start;
 				ls->size += seg->size;
 				free(seg);
 			} else {
+				// Cas 3.2.2 : le segment n'est pas adjacent au segment libre suivant
 				prev->next = seg;
 				seg->next = ls;
 			}

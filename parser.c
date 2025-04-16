@@ -55,7 +55,7 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 		label[strcspn(label, ":")] = '\0'; // supprimer le ":" à la fin du label
 		int *count = (int*)malloc(sizeof(int));
 		*count = code_count;
-		hashmap_insert(labels, label, count); //si le label est trouvé, l'ajouter à la hashmap
+		hashmap_insert(labels, label, count); //si label est trouvé, l'ajouter à la hashmap
 	}
 	if (!inst) {
 		fprintf(stderr, "Memory allocation failed\n");
@@ -106,12 +106,14 @@ ParserResult *parse(const char *filename) {
 	p->labels = hashmap_create();
 	p->memory_locations = hashmap_create();
 	
+	// Lire les instructions de .DATA
 	while (fgets(buffer, sizeof(buffer), f)) {
 		buffer[strcspn(buffer, "\n")] = '\0'; // supprimer le retour à la ligne
 		if (strcmp(buffer, ".CODE") == 0) break;
 		Instruction *ins = parse_data_instruction(buffer, p->memory_locations);
 		if (ins) {
 			p->data_instructions[p->data_count++] = ins;
+			// Redimensionner le tableau si le nombre d'instructions dépasse la capacité
 			if (p->data_count >= n) {
 				n *= 2;
 				p->data_instructions = realloc(p->data_instructions, sizeof(Instruction*) * n);
@@ -123,11 +125,14 @@ ParserResult *parse(const char *filename) {
 		}
 	}
 	
+	n = 50; // Réinitialiser n pour le code
+	// Lire les instructions de .CODE
 	while (fgets(buffer, sizeof(buffer), f)) {
 		buffer[strcspn(buffer, "\n")] = '\0'; // supprimer le retour à la ligne
 		Instruction *ins = parse_code_instruction(buffer, p->labels, p->code_count);
 		if (ins) {
 			p->code_instructions[p->code_count++] = ins;
+			// Redimensionner le tableau si le nombre d'instructions dépasse la capacité
 			if (p->code_count >= n) {
 				n *= 2;
 				p->code_instructions = realloc(p->code_instructions, sizeof(Instruction*) * n);
@@ -138,6 +143,7 @@ ParserResult *parse(const char *filename) {
 			}
 		}
 	}
+	// Redimensionner les tableaux à la taille finale pour éviter les fuites de mémoire
 	p->data_instructions = realloc(p->data_instructions, sizeof(Instruction*) * (p->data_count));
 	p->code_instructions = realloc(p->code_instructions, sizeof(Instruction*) * (p->code_count));
 

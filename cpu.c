@@ -12,7 +12,7 @@ CPU* cpu_init(int memory_size) {
     cpu->memory_handler = memory_init(memory_size);
     cpu->context = hashmap_create();
 	cpu->constant_pool = hashmap_create();
-
+	// Initialiser les registres
 	int *val = (int*)malloc(sizeof(int));
 	*val = 0;
     hashmap_insert(cpu->context, "AX", (void*)val);
@@ -40,13 +40,7 @@ CPU* cpu_init(int memory_size) {
 	val = (int*)malloc(sizeof(int));
 	*val = 0;
     hashmap_insert(cpu->context, "SF", (void*)val);
-    
-	int res = create_segment(cpu->memory_handler, "SS", 0, 128);
-	if (res == 0) {
-		fprintf(stderr, "error creating segment SS\n");
-		cpu_destroy(cpu);
-		return NULL;
-	}
+
 	val = (int*)malloc(sizeof(int));
 	*val = 127;
     hashmap_insert(cpu->context, "SP", (void*)val);
@@ -58,6 +52,14 @@ CPU* cpu_init(int memory_size) {
 	val = (int*)malloc(sizeof(int));
 	*val = -1;
     hashmap_insert(cpu->context, "ES", (void*)val);
+
+	//Initialiser le segment de pile
+	int res = create_segment(cpu->memory_handler, "SS", 0, 128);
+	if (res == 0) {
+		fprintf(stderr, "error creating segment SS\n");
+		cpu_destroy(cpu);
+		return NULL;
+	}
 
     return cpu;
 }
@@ -72,6 +74,7 @@ void cpu_destroy(CPU* cpu) {
         free(seg);
         seg = next;
     }
+	// Liberer segment DS
     seg = (Segment*)hashmap_get(cpu->memory_handler->allocated, "DS");
 	for (int i = 0; i < seg->size; i++) {
 		void *val = load(cpu->memory_handler, "DS", i);
@@ -79,6 +82,7 @@ void cpu_destroy(CPU* cpu) {
 			free(val);
 		}
 	}
+	// Liberer segment CS
 	seg = (Segment*)hashmap_get(cpu->memory_handler->allocated, "CS");
 	for (int i = 0; i < seg->size; i++) {
 		Instruction *val = (Instruction *)load(cpu->memory_handler, "CS", i);
@@ -114,8 +118,20 @@ void* load(MemoryHandler *handler, const char *segment_name, int pos) {
     return handler->memory[seg->start + pos];
 }
 
+int find_first_free_segment (MemoryHandler* handler, int size) {
+	Segment *seg = handler->free_list;
+	while (seg != NULL) {
+		if (seg->size >= size) {
+			return seg->start;
+		}
+		seg = seg->next;
+	}
+	return -1; // No free segment found
+}
+
 void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_count) {
 	int total = 0;
+	// Calculer la taille totale des données
 	for (int i = 0; i < data_count; i++) {
 		int count = 0;
 		char *values = data_instructions[i]->operand2;
@@ -129,24 +145,19 @@ void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_coun
 		total += count;
 	}
 	
-	int start = -1;
-	Segment *seg = cpu->memory_handler->free_list;
-	while (seg != NULL) {
-		if (seg->size >= total) {
-			start = seg->start;
-			break;
-		}
-		seg = seg->next;
-	}
+	// Rechercher un segment libre de taille suffisante
+	int start = find_first_free_segment(cpu->memory_handler, total);
 	if (start == -1) {
 		fprintf(stderr, "no space available for data length %d\n", total);
 		return ;
 	}
+	// Créer le segment DS
 	int res = create_segment(cpu->memory_handler, "DS", start, total);
 	if (res == 0) {
 		fprintf(stderr, "error creating segment [%d,%d]\n", start, total);
 		return ;
 	}
+	// Stocker les instructions dans le segment de données
 	int j = 0;
 	for (int i = 0; i < data_count; i++) {
 		char *values = data_instructions[i]->operand2;
@@ -163,15 +174,7 @@ void allocate_variables(CPU *cpu, Instruction** data_instructions, int data_coun
 }
 
 void allocate_code_segment(CPU *cpu, Instruction **code_instructions, int code_count) {
-	int start = -1;
-	Segment *seg = cpu->memory_handler->free_list;
-	while (seg != NULL) {
-		if (seg->size >= code_count) {
-			start = seg->start;
-			break;
-		}
-		seg = seg->next;
-	}
+	int start = find_first_free_segment(cpu->memory_handler, code_count);
 	if (start == -1) {
 		fprintf(stderr, "no space available for code length %d\n", code_count);
 		return ;

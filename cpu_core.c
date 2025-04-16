@@ -212,10 +212,12 @@ int resolve_constants(ParserResult *result) {
     for (int i = 0; i < result->code_count; i++) {
         Instruction *instr = result->code_instructions[i];
         if (strcmp(instr->operand2, "") != 0) {
+            // Si l'opérande 2 existe, on le remplace par une addresse
             if (! search_and_replace(&instr->operand2, result->memory_locations)) {
                 fprintf(stderr, "error: replacement fault at index %d\n", i);
             }
         } else {
+            // Sinon, on remplace operand1 par une adresse
             if (! search_and_replace(&instr->operand1, result->labels)) {
                 fprintf(stderr, "error: replacement fault at index %d\n", i);
             }
@@ -427,7 +429,7 @@ int push_value(CPU *cpu, int value) {
         fprintf(stderr, "Stack pointer out of bounds\n");
         return -1;
     }
-
+    // Stocker value dans le segment de pile
     int *val = (int *)malloc(sizeof(int));
     *val = value;
     if (!store(cpu->memory_handler, "SS", *sp, val)) {
@@ -438,7 +440,7 @@ int push_value(CPU *cpu, int value) {
     return 1;
 }
 
-int pop_value(CPU *cpu, int *value) {
+int pop_value(CPU *cpu, int *dest) {
     Segment *seg = hashmap_get(cpu->memory_handler->allocated, "SS");
     if (!seg) {
         fprintf(stderr, "Stack segment not found\n");
@@ -452,11 +454,12 @@ int pop_value(CPU *cpu, int *value) {
         return -1;
     }
     (*sp)++;
+    // Charger la valeur du sommet de SS
     void *val = load(cpu->memory_handler, "SS", *sp);
     if (!val) {
         return -1;
     }
-    *value = *(int *)val;
+    *dest = *(int *)val;
     free(val);
     return 1;
 }
@@ -485,6 +488,7 @@ int find_free_address_strategy(MemoryHandler *handler, int size, int strategy) {
         while (seg != NULL) {
             if (seg->size >= size) {
                     start = seg->start;
+                    break;
                 }
             seg = seg->next;
         }
