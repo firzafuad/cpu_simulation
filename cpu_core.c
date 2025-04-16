@@ -8,6 +8,7 @@
 #define REGISTER_PATTERN "^[ABCD]X$"
 #define MEMORY_DIRECT_PATTERN "^\\[([0-9])+\\]$"
 #define REGISTER_INDIRECT_PATTERN "^\\[(AX|BX|CX|DX)\\]$"
+#define SEGMENT_OVERRIDE_PATTERN "^\\[[A-Z]S:[A-Z]X\\]$"
 
 //Exercice 5 :
 int matches(const char* pattern, const char* string) {
@@ -131,6 +132,8 @@ void *resolve_addressing(CPU *cpu, const char *operand) {
     if ( (value = memory_direct_addressing(cpu, operand)) )
         return value;
     if ( (value = register_indirect_addressing(cpu, operand)) )
+        return value;
+    if ( (value = segment_override_addressing(cpu, operand)) )
         return value;
     fprintf(stderr, "No matching addressing mode: %s\n", operand);
     return NULL;
@@ -421,4 +424,66 @@ int pop_value(CPU *cpu, int *value) {
     *value = *(int *)val;
     free(val);
     return 1;
+}
+
+//Exercice 8 :
+void *segment_override_addressing(CPU* cpu, const char* operand) {
+    // Vérifier si l'opérande est un segment valide
+    if (matches(SEGMENT_OVERRIDE_PATTERN, operand)) {
+        char segment[64], regist[64];
+        // extraire la position entre crochets
+        sscanf(operand, "[%s:%s]", segment, regist);
+        segment[2] = '\0';
+        regist[2] = '\0';
+        int *pos = (int *)hashmap_get(cpu->context, regist);
+        return load(cpu->memory_handler, segment, *pos); //retourner la valeur stockèe dans le segment de données
+    }
+    fprintf(stderr, "Invalid memory segment: %s\n", operand);
+    return NULL;
+}
+
+int find_free_address_strategy(MemoryHandler *handler, int size, int strategy) {
+    Segment *seg = handler->free_list;
+    int start = -1;
+    switch (strategy) {
+    case 0: // First Fit
+        while (seg != NULL) {
+            if (seg->size >= size) {
+                    start = seg->start;
+                }
+            seg = seg->next;
+        }
+        break;
+    
+    case 1: // Best Fit
+        int best = -1;
+        while (seg != NULL) {
+            if (seg->size >= size) {
+                if (best == -1 || seg->size < best) {
+                    best = seg->size;
+                    start = seg->start;
+                }
+            }
+            seg = seg->next;
+        }
+        break;
+
+    case 2 : // Worst Fit
+        int worst = -1;
+        while (seg != NULL) {
+            if (seg->size >= size) {
+                if (seg->size > worst) {
+                    worst = seg->size;
+                    start = seg->start;
+                }
+            }
+            seg = seg->next;
+        }
+        break;
+    
+    default:
+        break;
+    }
+    
+    return start; // No free address found
 }

@@ -38,9 +38,16 @@ Instruction *parse_data_instruction(const char *line, HashMap* memory_locations)
 Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_count) {
 	char mnemonic[256], operand[256], label[256];
 	char* token;
-	
+	Instruction *inst = (Instruction*)malloc(sizeof(Instruction));
 	if (sscanf(line, "%s %s %s", label, mnemonic, operand) != 3) { //verifier si il y a un label
 		if (sscanf(line, "%s %s", mnemonic, operand) != 2) { //si ce n'est pas le cas, rescanner sans label
+			if ((sscanf(line, "%s", mnemonic) != 2) == 1) {
+				inst->mnemonic = strdup(mnemonic);
+				inst->operand1 = strdup("");
+				inst->operand2 = strdup("");
+				return inst;
+			}
+			free(inst);
 			printf("Invalid code instruction format: %s\n", line);
 			return NULL;
 		}
@@ -50,7 +57,6 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 		*count = code_count;
 		hashmap_insert(labels, label, count); //si le label est trouvé, l'ajouter à la hashmap
 	}
-	Instruction *inst = (Instruction*)malloc(sizeof(Instruction));
 	if (!inst) {
 		printf("Memory allocation failed\n");
 		return NULL;
