@@ -341,40 +341,55 @@ Instruction* fetch_next_instruction(CPU *cpu) {
 int run_program(CPU *cpu) {
     if (!cpu) return 0;
 
+    int nReg = 10;
+    char *registres[] = {"AX", "BX", "CX", "DX", "IP", "ZF", "SF", "SP", "BP", "ES"};
+    char input;
+    Instruction *prev = NULL, *curr = NULL, *next = NULL;
     // Afficher l'état initial du CPU
     printf("Initial CPU state:\n");
-    print_data_segment(cpu);
-    char *registres[] = {"AX", "BX", "CX", "DX", "IP", "ZF", "SF"};
-    for (int i = 0; i < 7; i++) {
-        int *val = (int *)hashmap_get(cpu->context, registres[i]);
-        if (val) {
-            printf("%s: %d\n", registres[i], *val);
-        } else {
-            printf("%s: NULL\n", registres[i]);
-        }
-    }
 
-    // Exécuter le programme
-    char input;
-    printf("Press enter to execute instruction or 'q' to quit ");
-    Instruction *instr;
+    // Afficher l'etat courant du CPU
     do {
+        print_data_segment(cpu);
+        printf("\n--- REGISTERS ---\n");
+        for (int i = 0; i < nReg; i++) {
+            int *val = (int *)hashmap_get(cpu->context, registres[i]);
+            if (val) {
+                printf("%s: %d\n", registres[i], *val);
+            } else {
+                printf("%s: NULL\n", registres[i]);
+            }
+        }
+        printf("\n--- EXECUTION CONTEXT ---\n");
+        if (prev) printf("Previous: %s %s %s\n", prev->mnemonic, prev->operand1, prev->operand2);
+        else printf("Previous: No previous instruction\n");
+
+        if (curr) printf("Current: %s %s %s\n", curr->mnemonic, curr->operand1, curr->operand2);
+        else printf("Current: Beginning of program\n");
+
+        next = fetch_next_instruction(cpu);
+        if (next) printf("Next: %s %s %s\n", next->mnemonic, next->operand1, next->operand2);
+        else printf("Next: End of program\n");
+
+        printf("\n--- INTERACTIVE PROMPT ---\n");
+        printf("Press ENTER to execute next instruction\nPress 'q' to quit execution\n");
         input = getchar();
         if (input == 'q' || input == 'Q')
             break;
         // Afficher l'instruction courante
-        instr = fetch_next_instruction(cpu);
-        printf("Executing: %s %s %s\n", instr->mnemonic, instr->operand1, instr->operand2);
-        if (!execute_instruction(cpu, instr)) {
-            fprintf(stderr, "Error executing instruction %s\n", instr->mnemonic);
+        prev = curr;
+        curr = next;
+        if (!execute_instruction(cpu, curr)) {
+            fprintf(stderr, "Error executing instruction %s\n", curr->mnemonic);
             return 0;
         }
-    } while (instr != NULL);
+    } while (curr != NULL);
 
     // Afficher l'état final du CPU
     printf("Final CPU state:\n");
     print_data_segment(cpu);
-    for (int i = 0; i < 7; i++) {
+    printf("\n--- REGISTERS ---\n");
+    for (int i = 0; i < nReg; i++) {
         int *val = (int *)hashmap_get(cpu->context, registres[i]);
         if (val) {
             printf("%s: %d\n", registres[i], *val);

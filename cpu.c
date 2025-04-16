@@ -208,16 +208,16 @@ void allocate_code_segment(CPU *cpu, Instruction **code_instructions, int code_c
 void print_data_segment(CPU *cpu) {
 	Segment *seg = hashmap_get(cpu->memory_handler->allocated, "DS");
 	if (seg == NULL) {
-		printf("No data segment allocated\n");
+		fprintf(stderr, "No data segment allocated\n");
 		return ;
 	}
-	printf("memory location : (%d, %d)\n", seg->start, seg->size);
+	printf("--- DATA SEGMENT ---\n");
 	for (int i = 0; i < seg->size; i++) {
 		void *val = load(cpu->memory_handler, "DS", i);
 		if (val)
-			printf("[%d] : %d\n", i,  *(int*)val);
+			printf("[%02d] : %d\n", i,  *(int*)val);
 		else
-			printf("[%d] : NULL\n", i);
+			printf("[%02d] : NULL\n", i);
 	}
 }
 
