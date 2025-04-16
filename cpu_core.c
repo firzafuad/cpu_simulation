@@ -216,7 +216,7 @@ int resolve_constants(ParserResult *result) {
             if (! search_and_replace(&instr->operand2, result->memory_locations)) {
                 fprintf(stderr, "error: replacement fault at index %d\n", i);
             }
-        } else {
+        } else if (strcmp(instr->operand1, "") != 0) {
             // Sinon, on remplace operand1 par une adresse
             if (! search_and_replace(&instr->operand1, result->labels)) {
                 fprintf(stderr, "error: replacement fault at index %d\n", i);

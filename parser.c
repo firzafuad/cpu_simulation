@@ -39,9 +39,16 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 	char mnemonic[256], operand[256], label[256];
 	char* token;
 	Instruction *inst = (Instruction*)malloc(sizeof(Instruction));
-	if (sscanf(line, "%s %s %s", label, mnemonic, operand) != 3) { //verifier si il y a un label
+	if (!inst) {
+		fprintf(stderr, "Memory allocation failed\n");
+		return NULL;
+	}
+	inst->mnemonic = NULL;
+	inst->operand1 = NULL;
+	inst->operand2 = NULL;
+	/*if (sscanf(line, "%s: %s %s", label, mnemonic, operand) != 3) { //verifier si il y a un label
 		if (sscanf(line, "%s %s", mnemonic, operand) != 2) { //si ce n'est pas le cas, rescanner sans label
-			if ((sscanf(line, "%s", mnemonic) != 2) == 1) {
+			if (sscanf(line, "%s", mnemonic) == 1) {
 				inst->mnemonic = strdup(mnemonic);
 				inst->operand1 = strdup("");
 				inst->operand2 = strdup("");
@@ -56,10 +63,36 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 		int *count = (int*)malloc(sizeof(int));
 		*count = code_count;
 		hashmap_insert(labels, label, count); //si label est trouvé, l'ajouter à la hashmap
-	}
-	if (!inst) {
-		fprintf(stderr, "Memory allocation failed\n");
-		return NULL;
+	}*/
+	char *check = strchr(line, ':');
+	if (check != NULL) { // verifier si il y a un label
+		if (sscanf(line, "%s %s %s", label, mnemonic, operand) != 3) { // verifier si il y a un operand
+			if (sscanf(line, "%s %s", label, mnemonic) != 2) { // si ce n'est pas le cas, rescanner sans operand
+				free(inst);
+				fprintf(stderr, "Invalid code instruction format: %s\n", line);
+				return NULL;
+			}
+			inst->mnemonic = strdup(mnemonic);
+			inst->operand1 = strdup("");
+			inst->operand2 = strdup("");
+		}
+		label[strcspn(label, ":")] = '\0'; // supprimer le ":" à la fin du label
+		int *count = (int*)malloc(sizeof(int));
+		*count = code_count;
+		hashmap_insert(labels, label, count); //si label est trouvé, l'ajouter à la hashmap
+		if (inst->operand1 != NULL) return inst;
+	} else { // si ce n'est pas le cas, scanner sans label
+		if (sscanf(line, "%s %s", mnemonic, operand) != 2) {
+			if (sscanf(line, "%s", mnemonic) == 1) {
+				inst->mnemonic = strdup(mnemonic);
+				inst->operand1 = strdup("");
+				inst->operand2 = strdup("");
+				return inst;
+			}
+			free(inst);
+			fprintf(stderr, "Invalid code instruction format: %s\n", line);
+			return NULL;
+		}
 	}
 	inst->mnemonic = strdup(mnemonic);
 
