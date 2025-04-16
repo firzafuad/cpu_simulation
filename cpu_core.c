@@ -296,6 +296,14 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
         Segment *seg = hashmap_get(cpu->memory_handler->allocated, "CS");
         handle_MOV(cpu, (void *) &seg->size, hashmap_get(cpu->context, "IP"));
 
+    } else if (strcmp(instr->mnemonic, "ALLOC") == 0) {
+        if (!alloc_es_segment(cpu) )
+            return 0;
+
+    } else if (strcmp(instr->mnemonic, "FREE") == 0) {
+        if (!free_es_segment(cpu))
+            return 0;
+
     } else {
         fprintf(stderr, "Unknown instruction: %s\n", instr->mnemonic);
         return 0;
@@ -352,7 +360,7 @@ int run_program(CPU *cpu) {
     Instruction *instr;
     do {
         input = getchar();
-        if (input == 'q')
+        if (input == 'q' || input == 'Q')
             break;
         // Afficher l'instruction courante
         instr = fetch_next_instruction(cpu);
@@ -486,4 +494,62 @@ int find_free_address_strategy(MemoryHandler *handler, int size, int strategy) {
     }
     
     return start; // No free address found
+}
+
+int alloc_es_segment(CPU *cpu) {
+    //recupérer la taille et la stratégie de l'ES
+    int *taille = (int *)hashmap_get(cpu->context, "AX");
+    int *strategy = (int *)hashmap_get(cpu->context, "BX");
+    int *zf = (int *)hashmap_get(cpu->context, "ZF");
+
+    // recherche de bonne adresse et allocation de segment
+    int start = find_free_address_strategy(cpu->memory_handler, *taille, *strategy);
+    *zf = !create_segment(cpu->memory_handler, "ES", start, *taille);
+    if (*zf == 1) {
+        fprintf(stderr, "Error creating ES segment\n");
+        return 0;
+    }
+
+    // Initialiser le segment ES avec des zéros
+    for (int i = 0; i < *taille; i++) {
+        int *val = (int *)malloc(sizeof(int));
+        *val = 0;
+        if (!store(cpu->memory_handler, "ES", i, val)) {
+            free(val);
+            fprintf(stderr, "Error storing value in ES segment at index : %d \n", i);
+            return 0;
+        }
+    }
+
+    // Mettre à jour le registre ES par l'adresse de début de segment ES
+    int *es = (int *)hashmap_get(cpu->context, "ES");
+    if (es == NULL) {
+        fprintf(stderr, "Error retrieving ES segment\n");
+        return 0;
+    }
+    *es = start;
+    return 1;
+}
+
+int free_es_segment(CPU *cpu) {
+    // Recuperer le segment ES
+    Segment *seg = hashmap_get(cpu->memory_handler->allocated, "ES");
+    if (seg == NULL) {
+        fprintf(stderr, "Error retrieving ES segment\n");
+        return 0;
+    }
+    // Libérer la mémoire allouée pour chaque case du segment et supprimer le segment de la mémoire
+    for (int i = 0; i < seg->size; i++) {
+        void *val = load(cpu->memory_handler, "ES", i);
+        free(val);
+        val = NULL;
+    }
+
+    // Supprimer le segment ES
+    remove_segment(cpu->memory_handler, "ES");
+    hashmap_remove(cpu->memory_handler->allocated, "ES");
+    int *es = (int *)hashmap_get(cpu->context, "ES");
+    *es = -1;
+
+    return 1;
 }

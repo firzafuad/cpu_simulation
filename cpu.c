@@ -54,6 +54,11 @@ CPU* cpu_init(int memory_size) {
 	val = (int*)malloc(sizeof(int));
 	*val = 0;
     hashmap_insert(cpu->context, "BP", (void*)val);
+
+	val = (int*)malloc(sizeof(int));
+	*val = -1;
+    hashmap_insert(cpu->context, "ES", (void*)val);
+
     return cpu;
 }
 
