@@ -101,9 +101,9 @@ int remove_segment(MemoryHandler* handler, const char *name) {
 		// Cas 2 : le segment est au debut de la liste
 		if((seg->start + seg->size) == ls->start) {
 			// Cas 2.1 : le segment est adjacent au segment libre
-			seg->size += ls->size;
-			seg->next = ls->next;
-			free(ls);
+			ls->start = seg->start;
+			ls->size += seg->size;
+			free(seg);
 		} else {
 			// Cas 2.2 : le segment n'est pas adjacent au segment libre
 			seg->next = ls;

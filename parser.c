@@ -46,26 +46,9 @@ Instruction *parse_code_instruction(const char *line, HashMap* labels, int code_
 	inst->mnemonic = NULL;
 	inst->operand1 = NULL;
 	inst->operand2 = NULL;
-	/*if (sscanf(line, "%s: %s %s", label, mnemonic, operand) != 3) { //verifier si il y a un label
-		if (sscanf(line, "%s %s", mnemonic, operand) != 2) { //si ce n'est pas le cas, rescanner sans label
-			if (sscanf(line, "%s", mnemonic) == 1) {
-				inst->mnemonic = strdup(mnemonic);
-				inst->operand1 = strdup("");
-				inst->operand2 = strdup("");
-				return inst;
-			}
-			free(inst);
-			fprintf(stderr, "Invalid code instruction format: %s\n", line);
-			return NULL;
-		}
-	} else {
-		label[strcspn(label, ":")] = '\0'; // supprimer le ":" à la fin du label
-		int *count = (int*)malloc(sizeof(int));
-		*count = code_count;
-		hashmap_insert(labels, label, count); //si label est trouvé, l'ajouter à la hashmap
-	}*/
+	
 	char *check = strchr(line, ':');
-	if (check != NULL) { // verifier si il y a un label
+	if (check != NULL && *(check+1) == ' ') { // verifier si il y a un label
 		if (sscanf(line, "%s %s %s", label, mnemonic, operand) != 3) { // verifier si il y a un operand
 			if (sscanf(line, "%s %s", label, mnemonic) != 2) { // si ce n'est pas le cas, rescanner sans operand
 				free(inst);

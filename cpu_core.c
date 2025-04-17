@@ -46,7 +46,7 @@ void *immediate_addressing(CPU *cpu, const char *operand) {
 void *register_addressing(CPU *cpu, const char *operand) {
     // Vérifier si l'opérande est un registre valide
     if (matches(REGISTER_PATTERN, operand)) {
-        return hashmap_get(cpu-> context, operand);
+        return hashmap_get(cpu->context, operand);
     }
     fprintf(stderr, "Invalid register: %s\n", operand);
     return NULL;
@@ -75,9 +75,9 @@ void *register_indirect_addressing(CPU *cpu, const char *operand) {
     // extraire le registre entre crochets
     sscanf(operand, "[%s", reg);
     reg[strcspn(reg, "]")] = '\0';
-    void *data = hashmap_get(cpu->context, reg);
+    void *data = register_addressing(cpu, reg);
     if (data == NULL) {
-        fprintf(stderr, "Invalid register indirect addressing: %s\n", reg);
+        fprintf(stderr, "Invalid register indirect addressing: %s\n", operand);
         return NULL;
     }
     return load(cpu->memory_handler, "DS", *(int *)data); //retourner la valeur stockèe dans le segment de données
@@ -170,7 +170,7 @@ int search_and_replace (char **str, HashMap *values) {
             if (substr) {
                 // Construct replacement buffer
                 char replacement[64];
-                snprintf(replacement, sizeof(replacement), "[%d]", value);
+                snprintf(replacement, sizeof(replacement), "%d", value);
 
                 // Calculate lengths
                 int key_len = strlen(key);
@@ -211,21 +211,17 @@ int resolve_constants(ParserResult *result) {
     // Iterer toutes les cases de tableau code instructions
     for (int i = 0; i < result->code_count; i++) {
         Instruction *instr = result->code_instructions[i];
+        if (strcmp(instr->operand1, "") != 0) {
+            // Sinon, on remplace operand1 par une adresse
+            if (! search_and_replace(&instr->operand1, result->memory_locations) && ! search_and_replace(&instr->operand1, result->labels)) {
+                fprintf(stderr, "operand1: %s replacement fault\n", instr->operand1);
+            }
+        }
         if (strcmp(instr->operand2, "") != 0) {
             // Si l'opérande 2 existe, on le remplace par une addresse
-            if (! search_and_replace(&instr->operand2, result->memory_locations)) {
-                fprintf(stderr, "error: replacement fault at index %d\n", i);
+            if (! search_and_replace(&instr->operand2, result->memory_locations) && ! search_and_replace(&instr->operand2, result->labels)) {
+                fprintf(stderr, "operand2: %s replacement fault\n", instr->operand2);
             }
-        } else if (strcmp(instr->operand1, "") != 0) {
-            // Sinon, on remplace operand1 par une adresse
-            if (! search_and_replace(&instr->operand1, result->labels)) {
-                fprintf(stderr, "error: replacement fault at index %d\n", i);
-            }
-            char addr[64];
-            sscanf(instr->operand1, "[%s", addr);
-            addr[strcspn(addr, "]")] = '\0';
-            free(instr->operand1);
-            instr->operand1 = strdup(addr);
         }
     }
 
@@ -286,29 +282,30 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
 
     } else if (strcmp(instr->mnemonic, "PUSH") == 0) {
         int *reg;
-        if (src == NULL)
+        if (dest == NULL)
             reg = (int *)hashmap_get(cpu->context, "AX");
         else 
-            reg = (int *)hashmap_get(cpu->context, (char *)src);
-        if (push_value(cpu, *(int *)reg) == -1) {
+            reg = (int *)hashmap_get(cpu->context, instr->operand1);
+        if (push_value(cpu, *reg) == -1) {
             fprintf(stderr, "Error pushing value %d onto stack\n", *(int *)reg);
             return 0;
         }
 
     } else if (strcmp(instr->mnemonic, "POP") == 0) {
         int *reg;
-        if (src == NULL)
+        if (dest == NULL)
             reg = (int *)hashmap_get(cpu->context, "AX");
         else 
-            reg = (int *)hashmap_get(cpu->context, (char *)src);
-        if (pop_value(cpu, (int *)reg) == -1) {
+            reg = (int *)hashmap_get(cpu->context, instr->operand1);
+        if (pop_value(cpu, reg) == -1) {
             fprintf(stderr, "Error popping value %d from stack\n", *(int *)reg);
             return 0;
         }
 
     } else if (strcmp(instr->mnemonic, "HALT") == 0) {
         Segment *seg = hashmap_get(cpu->memory_handler->allocated, "CS");
-        handle_MOV(cpu, (void *) &seg->size, hashmap_get(cpu->context, "IP"));
+        void *ip = hashmap_get(cpu->context, "IP");
+        handle_MOV(cpu, (void *) &seg->size, ip);
 
     } else if (strcmp(instr->mnemonic, "ALLOC") == 0) {
         if (!alloc_es_segment(cpu))
@@ -326,15 +323,10 @@ int handle_instruction(CPU *cpu, Instruction *instr, void *src, void *dest) {
 }
 
 int execute_instruction(CPU *cpu, Instruction *instr) {
-    if (!instr) return 0;
+    if (instr == NULL) return 0;
     // Résoudre les opérandes
     void *dest = resolve_addressing(cpu, instr->operand1);
     void *src = resolve_addressing(cpu, instr->operand2);
-
-    if (!src && !dest) {
-        fprintf(stderr, "Invalid operands for instruction: %s\n", instr->mnemonic);
-        return 0;
-    }
 
     // Traiter l'instruction
     return handle_instruction(cpu, instr, src, dest);
@@ -393,10 +385,7 @@ int run_program(CPU *cpu) {
         // Afficher l'instruction courante
         prev = curr;
         curr = next;
-        if (!execute_instruction(cpu, curr)) {
-            fprintf(stderr, "Error executing instruction %s\n", curr->mnemonic);
-            return 0;
-        }
+        execute_instruction(cpu, curr);
     } while (curr != NULL);
 
     // Afficher l'état final du CPU
@@ -432,7 +421,7 @@ int push_value(CPU *cpu, int value) {
     // Stocker value dans le segment de pile
     int *val = (int *)malloc(sizeof(int));
     *val = value;
-    if (!store(cpu->memory_handler, "SS", *sp, val)) {
+    if (!store(cpu->memory_handler, "SS", *sp, (void *)val)) {
         free(val);
         return -1;
     }

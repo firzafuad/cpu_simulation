@@ -4,14 +4,20 @@ y DB 4
 arr DB 5,6,7,8
 z DB 10
 .CODE
-start: MOV AX,x
+start: MOV AX,[x]
 MOV BX,[AX]
-ADD BX,y
-MOV [arr],BX
+ADD DX,[y]
+MOV BX,0
+ALLOC
 loop: MOV CX,[arr]
-INC CX
-MOV [arr],CX
-CMP CX,10
+PUSH
+ADD AX,2
+MOV [ES:0],99
+ADD [arr],5
+POP DX
+CMP CX,5
 JZ end
 JMP loop
-end: HALT
+end: FREE
+HALT
+MOV AX,BX
