@@ -1,0 +1,18 @@
+.DATA
+n DW 9
+x DW 0
+y DB 1
+res DB 10
+.CODE
+start: MOV AX,[x]
+MOV BX,[y]
+MOV CX,1
+loop: CMP CX,[n]
+JZ last
+ADD CX,1
+MOV DX,BX
+ADD BX,AX
+MOV AX,DX
+JMP loop
+last: MOV [res],BX
+HALT

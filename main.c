@@ -1,8 +1,12 @@
 #include "cpu_core.h"
 #include <stdio.h>
 
-int main() {
-	ParserResult * p = parse("test.txt");
+int main(int argc, char *argv[]) {
+	if (argc != 2) {
+		fprintf(stderr, "Usage: %s <filename>\n", argv[0]);
+		return 1;
+	}
+	ParserResult * p = parse(argv[1]);
 	int data = p->data_count;
 	printf("data instructions : \n");
 	for (int i = 0; i < data; i++) {
@@ -20,12 +24,12 @@ int main() {
 	int code = p->code_count;
 	printf("\ncode instructions (avant): \n");
 	for (int i = 0; i < code; i++) {
-		printf("%s %s %s\n", p->code_instructions[i]->mnemonic, p->code_instructions[i]->operand1, p->code_instructions[i]->operand2);
+		printf("%s|%s|%s\n", p->code_instructions[i]->mnemonic, p->code_instructions[i]->operand1, p->code_instructions[i]->operand2);
 	}
 	resolve_constants(p);
 	printf("code instructions (après): \n");
 	for (int i = 0; i < code; i++) {
-		printf("%s %s %s\n", p->code_instructions[i]->mnemonic, p->code_instructions[i]->operand1, p->code_instructions[i]->operand2);
+		printf("%s|%s|%s\n", p->code_instructions[i]->mnemonic, p->code_instructions[i]->operand1, p->code_instructions[i]->operand2);
 	}
 
 	printf("\nlabels : \n");
