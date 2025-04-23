@@ -76,21 +76,25 @@ void cpu_destroy(CPU* cpu) {
     }
 	// Liberer segment DS
     seg = (Segment*)hashmap_get(cpu->memory_handler->allocated, "DS");
-	for (int i = 0; i < seg->size; i++) {
-		void *val = load(cpu->memory_handler, "DS", i);
-		if (val) {
-			free(val);
+	if (seg) {
+		for (int i = 0; i < seg->size; i++) {
+			void *val = load(cpu->memory_handler, "DS", i);
+			if (val) {
+				free(val);
+			}
 		}
 	}
 	// Liberer segment CS
 	seg = (Segment*)hashmap_get(cpu->memory_handler->allocated, "CS");
-	for (int i = 0; i < seg->size; i++) {
-		Instruction *val = (Instruction *)load(cpu->memory_handler, "CS", i);
-		if (val) {
-			free(val->mnemonic);
-			free(val->operand1);
-			free(val->operand2);
-			free(val);
+	if (seg) {
+		for (int i = 0; i < seg->size; i++) {
+			Instruction *val = (Instruction *)load(cpu->memory_handler, "CS", i);
+			if (val) {
+				free(val->mnemonic);
+				free(val->operand1);
+				free(val->operand2);
+				free(val);
+			}
 		}
 	}
 	free(cpu->memory_handler->memory);

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #define TOMBSTONE (( void *) -1)
-#define TABLE_SIZE 128
+#define TABLE_SIZE 200
 
 
 unsigned long simple_hash(const char *str) {
@@ -43,23 +43,28 @@ int hashmap_insert(HashMap* map, const char *key, void* value) {
 }
 
 void* hashmap_get(HashMap *map, const char *key) {
-	unsigned long index = simple_hash(key);
+	unsigned long idx = simple_hash(key);
 	for (int i = 0; i < map->size; i++) {
-		unsigned long idx = (index + i) % map->size;
+		if(idx >= map->size) {
+			idx=0;
+		}
 		if (map->table[idx].key && strcmp(map->table[idx].key, key) == 0) {
 			return map->table[idx].value;
 		}
 		if (map->table[idx].value == NULL) break; // Arrêter si on trouve une case vide
+		idx++;
 	}
 	return NULL;
 }
 
 int hashmap_remove(HashMap *map, const char *key) {
-	unsigned long index = simple_hash(key);
+	unsigned long idx = simple_hash(key);
 
-	for (int i = 0; i < TABLE_SIZE; i++) {
-        unsigned long curr = (index + i) % TABLE_SIZE;
-        HashEntry *entry = &map->table[curr];
+	for (int i = 0; i < map->size; i++) {
+        if(idx >= map->size) {
+			idx=0;
+		}
+        HashEntry *entry = &map->table[idx];
         
         if (!entry->key) {
             if (entry->value != TOMBSTONE) {
@@ -74,6 +79,7 @@ int hashmap_remove(HashMap *map, const char *key) {
             map->size--;
             return 1;
         }
+        idx++;
     }
 	
 	return 0;

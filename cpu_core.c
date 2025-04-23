@@ -111,7 +111,10 @@ CPU* setup_test_environment () {
     *dx = 0;
     // Creer et initialiser le segment de donnees
     if (! hashmap_get(cpu-> memory_handler->allocated , "DS") ) {
-        create_segment(cpu-> memory_handler , "DS", 0 , 20) ;
+        if (! create_segment(cpu-> memory_handler , "DS", 129, 20)) {
+            fprintf(stderr, "Error creating data segment\n");
+            return NULL;
+        }
         // Initialiser le segment de donnes avec des valeurs de test
         for (int i = 0; i < 10; i ++) {
             int * value = (int *)malloc(sizeof(int));
